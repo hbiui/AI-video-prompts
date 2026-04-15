@@ -196,7 +196,8 @@ export async function generateVideoPrompt(
   model: ModelType,
   language: LanguageType,
   images?: (string | ImageObject)[], // Support both old and new formats
-  apiConfig?: { provider: string; apiKey: string; baseUrl?: string; modelName?: string }
+  apiConfig?: { provider: string; apiKey: string; baseUrl?: string; modelName?: string },
+  technique?: string
 ): Promise<PromptResult> {
   // Normalize images to ImageObject[]
   const normalizedImages: ImageObject[] = (images || []).map(img => {
@@ -207,17 +208,17 @@ export async function generateVideoPrompt(
   // If custom API is provided and has a key, use the appropriate provider
   if (apiConfig && apiConfig.apiKey) {
     if (apiConfig.provider === "openai" || apiConfig.provider === "doubao" || apiConfig.provider === "custom") {
-      return callOpenAICompatible(userInput, model, language, normalizedImages, apiConfig);
+      return callOpenAICompatible(userInput, model, language, normalizedImages, apiConfig, technique);
     }
     // For Gemini, we could re-initialize the client with the user's key
     if (apiConfig.provider === "gemini") {
       const userAi = new GoogleGenAI({ apiKey: apiConfig.apiKey });
-      return runGeminiGeneration(userAi, userInput, model, language, normalizedImages, apiConfig.modelName);
+      return runGeminiGeneration(userAi, userInput, model, language, normalizedImages, apiConfig.modelName, technique);
     }
   }
 
   // Default to system Gemini
-  return runGeminiGeneration(getAiClient(), userInput, model, language, normalizedImages);
+  return runGeminiGeneration(getAiClient(), userInput, model, language, normalizedImages, undefined, technique);
 }
 
 async function runGeminiGeneration(
@@ -226,7 +227,8 @@ async function runGeminiGeneration(
   model: ModelType,
   language: LanguageType,
   images?: ImageObject[],
-  customModelName?: string
+  customModelName?: string,
+  technique?: string
 ): Promise<PromptResult> {
   const modelName = customModelName || "gemini-3-flash-preview";
   
@@ -263,6 +265,7 @@ async function runGeminiGeneration(
     text: `用户创意: "${userInput}"
 选择模型: ${model}
 输出语言: ${language}
+${technique ? `指定视频手法: ${technique}` : ""}
 
 请根据以上信息生成专业的视频提示词。`,
   });
@@ -328,7 +331,8 @@ async function callOpenAICompatible(
   model: ModelType,
   language: LanguageType,
   images?: ImageObject[],
-  apiConfig?: { provider: string; apiKey: string; baseUrl?: string; modelName?: string }
+  apiConfig?: { provider: string; apiKey: string; baseUrl?: string; modelName?: string },
+  technique?: string
 ): Promise<PromptResult> {
   try {
     const baseUrl = apiConfig?.baseUrl || (apiConfig?.provider === "openai" ? "https://api.openai.com/v1" : "");
@@ -347,7 +351,7 @@ async function callOpenAICompatible(
       { 
         role: "user", 
         content: [
-          { type: "text", text: `用户创意: "${userInput}"\n选择模型: ${model}\n输出语言: ${language}\n\n${imageContext}\n\n请根据以上信息生成专业的视频提示词。` },
+          { type: "text", text: `用户创意: "${userInput}"\n选择模型: ${model}\n输出语言: ${language}\n${technique ? `指定视频手法: ${technique}\n` : ""}\n${imageContext}\n\n请根据以上信息生成专业的视频提示词。` },
           ...(images || [])
             .filter(img => img.url && typeof img.url === 'string')
             .map(img => ({

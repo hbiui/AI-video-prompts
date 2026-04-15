@@ -100,6 +100,21 @@ export const translations = {
       fantasy: "奇幻史诗",
       documentary: "纪实风格",
       abstract: "抽象艺术"
+    },
+    videoTechnique: "视频手法",
+    optional: "(可选)",
+    selectTechnique: "选择一种视频手法 (可选)",
+    techniques: {
+      montage: "蒙太奇",
+      longTake: "长镜头",
+      timeLapse: "延时摄影",
+      slowMotion: "慢动作",
+      trackingShot: "跟拍镜头",
+      aerialView: "航拍视角",
+      pov: "POV (第一人称)",
+      splitScreen: "分屏",
+      matchCut: "匹配剪辑",
+      fadeTransition: "淡入淡出"
     }
   },
   en: {
@@ -201,6 +216,21 @@ export const translations = {
       fantasy: "Fantasy",
       documentary: "Documentary",
       abstract: "Abstract"
+    },
+    videoTechnique: "Video Technique",
+    optional: "(Optional)",
+    selectTechnique: "Select a video technique (optional)",
+    techniques: {
+      montage: "Montage",
+      longTake: "Long Take",
+      timeLapse: "Time-lapse",
+      slowMotion: "Slow Motion",
+      trackingShot: "Tracking Shot",
+      aerialView: "Aerial View",
+      pov: "POV (First Person)",
+      splitScreen: "Split Screen",
+      matchCut: "Match Cut",
+      fadeTransition: "Fade Transition"
     }
   }
 };

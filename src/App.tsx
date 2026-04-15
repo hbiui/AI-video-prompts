@@ -22,7 +22,18 @@ import {
   Sun,
   ZoomIn,
   ZoomOut,
-  RotateCcw
+  RotateCcw,
+  Film,
+  Clapperboard,
+  Timer,
+  Wind,
+  Target,
+  Bird,
+  Eye,
+  Columns,
+  Scissors,
+  ArrowLeftRight,
+  ChevronDown
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -55,6 +66,7 @@ interface HistoryItem {
   userInput: string;
   model: ModelType;
   language: LanguageType;
+  technique?: string;
   images: ImageObject[];
   result: PromptResult;
 }
@@ -66,6 +78,8 @@ export default function App() {
   const [userInput, setUserInput] = useState("");
   const [selectedModel, setSelectedModel] = useState<ModelType>("Seedance 2.0");
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageType>("Chinese");
+  const [selectedTechnique, setSelectedTechnique] = useState<string>("");
+  const [showTechniqueDropdown, setShowTechniqueDropdown] = useState(false);
   const [images, setImages] = useState<ImageObject[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<PromptResult | null>(null);
@@ -97,6 +111,19 @@ export default function App() {
     message: null,
     success: null
   });
+
+  const techniqueOptions = [
+    { id: "montage", icon: Film },
+    { id: "longTake", icon: Clapperboard },
+    { id: "timeLapse", icon: Timer },
+    { id: "slowMotion", icon: Wind },
+    { id: "trackingShot", icon: Target },
+    { id: "aerialView", icon: Bird },
+    { id: "pov", icon: Eye },
+    { id: "splitScreen", icon: Columns },
+    { id: "matchCut", icon: Scissors },
+    { id: "fadeTransition", icon: ArrowLeftRight },
+  ];
 
   // Theme effect
   useEffect(() => {
@@ -599,7 +626,14 @@ export default function App() {
       rightPanelRef.current.scrollTo({ top: 0, behavior: "smooth" });
     }
     try {
-      const res = await generateVideoPrompt(inputToUse, selectedModel, selectedLanguage, images, apiConfig);
+      const res = await generateVideoPrompt(
+        inputToUse, 
+        selectedModel, 
+        selectedLanguage, 
+        images, 
+        apiConfig.apiKey ? apiConfig : undefined,
+        selectedTechnique ? t.techniques[selectedTechnique as keyof typeof t.techniques] : undefined
+      );
       setResult(res);
       
       // Save to history
@@ -609,6 +643,7 @@ export default function App() {
         userInput: inputToUse,
         model: selectedModel,
         language: selectedLanguage,
+        technique: selectedTechnique,
         images: [...images],
         result: res
       };
@@ -657,6 +692,7 @@ export default function App() {
     setUserInput("");
     setSelectedModel("Seedance 2.0");
     setSelectedLanguage("Chinese");
+    setSelectedTechnique("");
     setImages([]);
     setResult(null);
     setError(null);
@@ -666,6 +702,7 @@ export default function App() {
     setUserInput(item.userInput);
     setSelectedModel(item.model);
     setSelectedLanguage(item.language);
+    setSelectedTechnique(item.technique || "");
     // Ensure images are objects and have IDs
     const normalizedImages = (item.images || []).map(img => {
       const base = typeof img === 'string' ? { url: img } : img;
@@ -1295,6 +1332,81 @@ export default function App() {
                       {lang === "Chinese" ? t.chinesePrompt : t.englishPrompt}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* Video Technique Selection */}
+              <div className="space-y-3 relative">
+                <div className="flex items-center gap-2">
+                  <label className="label-micro">{t.videoTechnique}</label>
+                  <span className="text-[10px] text-dim font-mono">{t.optional}</span>
+                </div>
+                
+                <div className="relative">
+                  <button
+                    onClick={() => setShowTechniqueDropdown(!showTechniqueDropdown)}
+                    className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3 flex items-center justify-between hover:border-brand-primary/50 transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      {selectedTechnique ? (
+                        <>
+                          {React.createElement(techniqueOptions.find(opt => opt.id === selectedTechnique)?.icon || Film, { className: "w-4 h-4 text-brand-primary" })}
+                          <span className="text-sm font-bold text-main">
+                            {t.techniques[selectedTechnique as keyof typeof t.techniques]}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-sm text-dim">{t.selectTechnique}</span>
+                      )}
+                    </div>
+                    <ChevronDown className={`w-4 h-4 text-muted group-hover:text-brand-primary transition-transform ${showTechniqueDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  <AnimatePresence>
+                    {showTechniqueDropdown && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-[60]" 
+                          onClick={() => setShowTechniqueDropdown(false)}
+                        />
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          className="absolute top-full left-0 right-0 mt-2 bg-brand-surface border border-brand-border rounded-xl shadow-2xl z-[70] overflow-hidden py-1"
+                        >
+                          <button
+                            onClick={() => {
+                              setSelectedTechnique("");
+                              setShowTechniqueDropdown(false);
+                            }}
+                            className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-brand-primary/10 transition-colors text-left"
+                          >
+                            <div className="w-4 h-4 rounded-full border border-brand-border" />
+                            <span className="text-xs font-bold text-dim">{t.clearAll}</span>
+                          </button>
+                          <div className="h-[1px] bg-brand-border mx-2 my-1" />
+                          {techniqueOptions.map((opt) => (
+                            <button
+                              key={opt.id}
+                              onClick={() => {
+                                setSelectedTechnique(opt.id);
+                                setShowTechniqueDropdown(false);
+                              }}
+                              className={`w-full px-4 py-2.5 flex items-center gap-3 hover:bg-brand-primary/10 transition-colors text-left ${
+                                selectedTechnique === opt.id ? 'bg-brand-primary/5 text-brand-primary' : 'text-main'
+                              }`}
+                            >
+                              <opt.icon className={`w-4 h-4 ${selectedTechnique === opt.id ? 'text-brand-primary' : 'text-muted'}`} />
+                              <span className="text-xs font-bold">
+                                {t.techniques[opt.id as keyof typeof t.techniques]}
+                              </span>
+                            </button>
+                          ))}
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
 
