@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -23,10 +23,30 @@ function createWindow() {
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
+      nodeIntegration: false,
+      contextIsolation: true,
+      webSecurity: true, // Keep security on, use IPC for proxy
     },
     width: 1200,
     height: 800,
     title: 'AI Video Prompt Director',
+  })
+
+  // Intercept navigation to open external links in default browser
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http')) {
+      shell.openExternal(url)
+      return { action: 'deny' }
+    }
+    return { action: 'allow' }
+  })
+
+  // Also handle direct navigation attempts (like <a> tags without target="_blank")
+  win.webContents.on('will-navigate', (event, url) => {
+    if (url.startsWith('http') && !url.includes('localhost') && !url.includes('127.0.0.1')) {
+      event.preventDefault()
+      shell.openExternal(url)
+    }
   })
 
   // Open devtools in development
@@ -42,14 +62,35 @@ function createWindow() {
   if (process.env.VITE_DEV_SERVER_URL) {
     win.loadURL(process.env.VITE_DEV_SERVER_URL)
   } else {
-    // win.loadFile('dist/index.html')
     win.loadFile(path.join(process.env.DIST, 'index.html'))
   }
 }
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
+// IPC Proxy for Fetch to bypass CORS
+ipcMain.handle('fetch-proxy', async (_event, { url, options }) => {
+  try {
+    const response = await fetch(url, options);
+    const status = response.status;
+    const statusText = response.statusText;
+    const headers = Object.fromEntries(response.headers.entries());
+    const data = await response.text();
+    
+    return {
+      ok: response.ok,
+      status,
+      statusText,
+      headers,
+      data
+    };
+  } catch (error: any) {
+    return {
+      ok: false,
+      error: error.message || 'Network request failed'
+    };
+  }
+});
+
+// Quit when all windows are closed, except on macOS.
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
@@ -58,8 +99,6 @@ app.on('window-all-closed', () => {
 })
 
 app.on('activate', () => {
-  // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow()
   }

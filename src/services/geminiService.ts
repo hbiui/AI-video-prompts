@@ -15,7 +15,17 @@ function getAiClient() {
     if (!apiKey) {
       console.warn("GEMINI_API_KEY is not defined. Please check your .env file.");
     }
-    _ai = new GoogleGenAI({ apiKey: apiKey || "dummy_key" });
+
+    // Custom fetch for Gemini in Electron
+    const requestOptions: any = {};
+    if (typeof window !== 'undefined' && (window as any).ipcRenderer) {
+      requestOptions.customFetch = universalFetch;
+    }
+
+    _ai = new GoogleGenAI({ 
+      apiKey: apiKey || "dummy_key",
+      ...requestOptions
+    });
   }
   return _ai;
 }
@@ -74,6 +84,71 @@ export interface ImageObject {
   id?: string;
   url: string;
   keyword?: string;
+}
+
+// Helper for cross-platform fetch (handles CORS in Electron)
+async function universalFetch(url: string, options: any) {
+  // Check if running in Electron and proxy is available
+  if (typeof window !== 'undefined' && (window as any).ipcRenderer) {
+    try {
+      const result = await (window as any).ipcRenderer.invoke('fetch-proxy', { url, options });
+      if (!result.ok && result.error) {
+        throw new Error(result.error);
+      }
+      return {
+        ok: result.ok,
+        status: result.status,
+        json: async () => JSON.parse(result.data),
+        text: async () => result.data
+      };
+    } catch (e) {
+      console.error("Electron fetch proxy failed, falling back to standard fetch", e);
+    }
+  }
+  return fetch(url, options);
+}
+
+export async function testApiConnection(config: { provider: string; apiKey: string; baseUrl?: string; modelName?: string }): Promise<{ success: boolean; message: string }> {
+  try {
+    if (config.provider === "gemini") {
+      const requestOptions: any = {};
+      if (typeof window !== 'undefined' && (window as any).ipcRenderer) {
+        requestOptions.customFetch = universalFetch;
+      }
+      const client = new GoogleGenAI({ apiKey: config.apiKey, ...requestOptions });
+      await client.models.generateContent({
+        model: config.modelName || "gemini-1.5-flash",
+        contents: "Hi"
+      });
+      return { success: true, message: "Gemini API 连接成功！" };
+    } else {
+      const baseUrl = config.baseUrl || (config.provider === "openai" ? "https://api.openai.com/v1" : "");
+      const endpoint = `${baseUrl}/chat/completions`;
+      const modelToUse = config.modelName || (config.provider === "openai" ? "gpt-3.5-turbo" : "doubao-pro-32k");
+      
+      const response = await universalFetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${config.apiKey}`
+        },
+        body: JSON.stringify({
+          model: modelToUse,
+          messages: [{ role: "user", content: "hi" }],
+          max_tokens: 5
+        })
+      });
+
+      if (response.ok) {
+        return { success: true, message: `${config.provider.toUpperCase()} API 连接成功！` };
+      } else {
+        const data = await response.json().catch(() => ({}));
+        return { success: false, message: data.error?.message || `连接失败 (状态码: ${response.status})` };
+      }
+    }
+  } catch (error: any) {
+    return { success: false, message: error.message || "连接发生异常" };
+  }
 }
 
 export async function generateVideoPrompt(
@@ -247,7 +322,7 @@ async function callOpenAICompatible(
     const defaultModel = apiConfig?.provider === "openai" ? "gpt-4o" : "doubao-pro-32k";
     const modelToUse = apiConfig?.modelName || defaultModel;
 
-    const response = await fetch(endpoint, {
+    const response = await universalFetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

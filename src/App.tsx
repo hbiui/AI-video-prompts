@@ -30,7 +30,8 @@ import {
   ModelType, 
   LanguageType, 
   PromptResult,
-  ImageObject
+  ImageObject,
+  testApiConnection
 } from "./services/geminiService";
 import { translations, Language, PROMPT_TEMPLATES, PromptTemplate } from "./constants";
 
@@ -90,6 +91,11 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [testStatus, setTestStatus] = useState<{ loading: boolean; message: string | null; success: boolean | null }>({
+    loading: false,
+    message: null,
+    success: null
+  });
 
   // Theme effect
   useEffect(() => {
@@ -99,6 +105,37 @@ export default function App() {
       document.documentElement.classList.add("light");
     }
   }, [isDarkMode]);
+
+  // Global drag-drop prevention for Electron
+  useEffect(() => {
+    const preventDefault = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    window.addEventListener('dragover', preventDefault);
+    window.addEventListener('drop', preventDefault);
+    return () => {
+      window.removeEventListener('dragover', preventDefault);
+      window.removeEventListener('drop', preventDefault);
+    };
+  }, []);
+
+  const handleTestConnection = async () => {
+    if (!apiConfig.apiKey) {
+      setTestStatus({ loading: false, success: false, message: uiLang === "zh" ? "请输入 API 密钥" : "Please enter API Key" });
+      return;
+    }
+
+    setTestStatus({ loading: true, success: null, message: t.testing });
+    
+    const result = await testApiConnection(apiConfig);
+    setTestStatus({ loading: false, success: result.success, message: result.success ? t.testSuccess : result.message });
+    
+    // Clear message after 3 seconds
+    setTimeout(() => {
+      setTestStatus(prev => ({ ...prev, message: null }));
+    }, 3000);
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -850,7 +887,20 @@ export default function App() {
                     )}
 
                     <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-muted uppercase tracking-widest">{t.apiModelName}</label>
+                      <div className="flex justify-between items-center">
+                        <label className="text-[10px] font-bold text-muted uppercase tracking-widest">{t.apiModelName}</label>
+                        <button 
+                          onClick={handleTestConnection}
+                          disabled={testStatus.loading}
+                          className={`text-[9px] font-bold px-2 py-0.5 rounded border transition-all ${
+                            testStatus.success === true ? 'bg-green-500/10 border-green-500/50 text-green-500' :
+                            testStatus.success === false ? 'bg-red-500/10 border-red-500/50 text-red-500' :
+                            'bg-brand-primary/10 border-brand-primary/30 text-brand-text hover:bg-brand-primary hover:text-black'
+                          }`}
+                        >
+                          {testStatus.loading ? t.testing : t.testConnection}
+                        </button>
+                      </div>
                       <input 
                         type="text"
                         value={apiConfig.modelName}
@@ -863,6 +913,11 @@ export default function App() {
                         }
                         className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-sm focus:border-brand-primary outline-none transition-all"
                       />
+                      {testStatus.message && (
+                        <p className={`text-[9px] mt-1 font-medium animate-in fade-in slide-in-from-top-1 duration-200 ${testStatus.success ? 'text-green-500' : 'text-red-500'}`}>
+                          {testStatus.message}
+                        </p>
+                      )}
                     </div>
                   </div>
 
