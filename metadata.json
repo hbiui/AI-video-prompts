@@ -1,0 +1,6 @@
+{
+  "name": "AI Video Prompt Director Assistant",
+  "description": "A professional tool for generating precise video prompts for Seedance 2.0 and Kling 3.0 Omni, featuring image analysis and bilingual output.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
