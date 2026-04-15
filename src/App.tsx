@@ -91,6 +91,7 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [showApiKeyWarning, setShowApiKeyWarning] = useState(false);
   const [testStatus, setTestStatus] = useState<{ loading: boolean; message: string | null; success: boolean | null }>({
     loading: false,
     message: null,
@@ -220,6 +221,24 @@ export default function App() {
       }
     };
     migrateHistory();
+
+    // API Key Warning Check
+    const checkApiKey = () => {
+      const savedApiConfig = localStorage.getItem("director_api_config");
+      const config = savedApiConfig ? JSON.parse(savedApiConfig) : null;
+      
+      if (!config || !config.apiKey) {
+        const savedDismissedDate = localStorage.getItem("director_api_warning_dismissed");
+        const today = new Date().toDateString();
+        if (savedDismissedDate !== today) {
+          setShowApiKeyWarning(true);
+        }
+      }
+    };
+    
+    // Delay check to ensure UI is ready and doesn't clash with other loads
+    const warningTimer = setTimeout(checkApiKey, 2000);
+    return () => clearTimeout(warningTimer);
   }, []);
 
   // Save data to localStorage whenever it changes
@@ -1711,6 +1730,160 @@ export default function App() {
           </p>
         </div>
       </footer>
+
+      {/* API Key Warning Modal */}
+      <AnimatePresence>
+        {showApiKeyWarning && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-md bg-brand-surface border border-brand-border rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-5 border-b border-brand-border bg-brand-primary/10 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-brand-primary" />
+                  <span className="text-sm font-bold text-brand-text">Sunell市场部为视频创作而设计</span>
+                </div>
+                <button onClick={() => setShowApiKeyWarning(false)} className="text-muted hover:text-main transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="p-8 space-y-6">
+                <div className="space-y-3 text-center">
+                  <div className="w-16 h-16 bg-brand-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <SettingsIcon className="w-8 h-8 text-brand-primary animate-pulse" />
+                  </div>
+                  <h3 className="text-lg font-bold text-main">
+                    {uiLang === 'zh' ? '未检测到 API 密钥' : 'API Key Not Found'}
+                  </h3>
+                  <p className="text-sm text-muted leading-relaxed">
+                    {uiLang === 'zh' 
+                      ? '为了获得最佳的提示词优化体验，请先前往设置页面填入您的 API 密钥。' 
+                      : 'To get the best prompt optimization experience, please go to settings and enter your API key first.'}
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <button 
+                    onClick={() => {
+                      setShowApiKeyWarning(false);
+                      setShowSettings(true);
+                    }}
+                    className="w-full py-3.5 rounded-xl bg-brand-primary text-black text-sm font-bold hover:bg-brand-primary/90 transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand-primary/20"
+                  >
+                    <SettingsIcon className="w-4 h-4" />
+                    {uiLang === 'zh' ? '立即前往设置' : 'Go to Settings Now'}
+                  </button>
+                  
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={() => setShowApiKeyWarning(false)}
+                      className="flex-1 py-3 rounded-xl border border-brand-border text-xs font-bold text-muted hover:bg-brand-border/30 transition-all"
+                    >
+                      {uiLang === 'zh' ? '暂时关闭' : 'Close for Now'}
+                    </button>
+                    <button 
+                      onClick={() => {
+                        localStorage.setItem("director_api_warning_dismissed", new Date().toDateString());
+                        setShowApiKeyWarning(false);
+                      }}
+                      className="flex-1 py-3 rounded-xl border border-brand-border text-xs font-bold text-muted hover:bg-brand-border/30 transition-all"
+                    >
+                      {uiLang === 'zh' ? '今日不再提醒' : "Don't remind me today"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* API Key Warning Modal */}
+      <AnimatePresence>
+        {showApiKeyWarning && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-md bg-brand-surface border border-brand-border rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-5 border-b border-brand-border bg-brand-primary/10 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-brand-primary" />
+                  <span className="text-sm font-bold text-brand-text">Sunell市场部为视频创作而设计</span>
+                </div>
+                <button onClick={() => setShowApiKeyWarning(false)} className="text-muted hover:text-main transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="p-8 space-y-6">
+                <div className="space-y-3 text-center">
+                  <div className="w-16 h-16 bg-brand-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <SettingsIcon className="w-8 h-8 text-brand-primary animate-pulse" />
+                  </div>
+                  <h3 className="text-lg font-bold text-main">
+                    {uiLang === 'zh' ? '未检测到 API 密钥' : 'API Key Not Found'}
+                  </h3>
+                  <p className="text-sm text-muted leading-relaxed">
+                    {uiLang === 'zh' 
+                      ? '为了获得最佳的提示词优化体验，请先前往设置页面填入您的 API 密钥。' 
+                      : 'To get the best prompt optimization experience, please go to settings and enter your API key first.'}
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <button 
+                    onClick={() => {
+                      setShowApiKeyWarning(false);
+                      setShowSettings(true);
+                    }}
+                    className="w-full py-3.5 rounded-xl bg-brand-primary text-black text-sm font-bold hover:bg-brand-primary/90 transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand-primary/20"
+                  >
+                    <SettingsIcon className="w-4 h-4" />
+                    {uiLang === 'zh' ? '立即前往设置' : 'Go to Settings Now'}
+                  </button>
+                  
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={() => setShowApiKeyWarning(false)}
+                      className="flex-1 py-3 rounded-xl border border-brand-border text-xs font-bold text-muted hover:bg-brand-border/30 transition-all"
+                    >
+                      {uiLang === 'zh' ? '暂时关闭' : 'Close for Now'}
+                    </button>
+                    <button 
+                      onClick={() => {
+                        localStorage.setItem("director_api_warning_dismissed", new Date().toDateString());
+                        setShowApiKeyWarning(false);
+                      }}
+                      className="flex-1 py-3 rounded-xl border border-brand-border text-xs font-bold text-muted hover:bg-brand-border/30 transition-all"
+                    >
+                      {uiLang === 'zh' ? '今日不再提醒' : "Don't remind me today"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Image Preview Modal */}
       <AnimatePresence>

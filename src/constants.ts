@@ -95,7 +95,11 @@ export const translations = {
       cinematic: "电影感",
       product: "产品展示",
       animation: "动画角色",
-      nature: "自然风光"
+      nature: "自然风光",
+      scifi: "科幻未来",
+      fantasy: "奇幻史诗",
+      documentary: "纪实风格",
+      abstract: "抽象艺术"
     }
   },
   en: {
@@ -192,7 +196,11 @@ export const translations = {
       cinematic: "Cinematic",
       product: "Product",
       animation: "Animation",
-      nature: "Nature"
+      nature: "Nature",
+      scifi: "Sci-Fi",
+      fantasy: "Fantasy",
+      documentary: "Documentary",
+      abstract: "Abstract"
     }
   }
 };
@@ -228,5 +236,53 @@ export const PROMPT_TEMPLATES: PromptTemplate[] = [
     category: "nature",
     title: { zh: "云雾山间", en: "Mountain Mist" },
     concept: "[Shot 1] 延时摄影风格，清晨的云雾在层峦叠嶂的山峰间缓慢流动，如同一幅流动的泼墨山水画。\n[Shot 2] 镜头推近，一棵孤傲的松树矗立在悬崖边，云海在其脚下翻腾。\n[Shot 3] 阳光穿透云层，形成壮丽的丁达尔效应，照亮了远处的古老寺庙。"
+  },
+  {
+    id: "scifi-station",
+    category: "scifi",
+    title: { zh: "星际空间站", en: "Interstellar Station" },
+    concept: "[Shot 1] 巨大的环形空间站静静悬浮在深邃的宇宙中，远处的蓝色行星散发着柔和的光芒。\n[Shot 2] 镜头推向空间站的观察窗，一名宇航员正凝视着外面的星云，反射光在他头盔上闪烁。\n[Shot 3] 一艘小型穿梭机从空间站弹射而出，尾部喷射出耀眼的离子火焰，消失在星海深处。"
+  },
+  {
+    id: "scifi-lab",
+    category: "scifi",
+    title: { zh: "赛博朋克实验室", en: "Cyberpunk Lab" },
+    concept: "[Shot 1] 昏暗的实验室里，无数全息投影屏幕漂浮在空中，散发着幽蓝的光芒，复杂的代码在屏幕上飞速滚动。\n[Shot 2] 镜头推向一个正在组装的仿生手臂，机械关节在激光焊接下发出细微的火花。\n[Shot 3] 科学家戴着增强现实眼镜，手指在虚空中灵巧地拨动，展现出极高科技的未来感。"
+  },
+  {
+    id: "fantasy-dragon",
+    category: "fantasy",
+    title: { zh: "巨龙觉醒", en: "Dragon Awakening" },
+    concept: "[Shot 1] 幽暗的巨大洞穴内，堆积如山的金币中，一只巨大的金色眼睛突然睁开，瞳孔竖立。\n[Shot 2] 镜头拉远，巨龙缓缓起身，抖落身上的财宝，鳞片在微弱的火光下闪烁着金属光泽。\n[Shot 3] 巨龙仰天长啸，一道炽热的龙息喷涌而出，瞬间照亮了整个地下宫殿。"
+  },
+  {
+    id: "fantasy-forest",
+    category: "fantasy",
+    title: { zh: "魔法森林秘境", en: "Enchanted Forest" },
+    concept: "[Shot 1] 参天大树的树根上覆盖着发光的苔藓，巨大的发光蘑菇像路灯一样点亮了森林的小径。\n[Shot 2] 一只长着独角的白鹿在溪边饮水，它每走一步，脚下的草地都会绽放出微小的光花。\n[Shot 3] 镜头缓缓拉升，展现出整片森林在夜色下犹如星海般璀璨的奇幻景观。"
+  },
+  {
+    id: "doc-cheetah",
+    category: "documentary",
+    title: { zh: "非洲草原猎豹", en: "African Savanna Cheetah" },
+    concept: "[Shot 1] 广阔的非洲大草原，金色的夕阳下，一只猎豹静静地潜伏在枯黄的高草丛中，目光锁定远处的羚羊。\n[Shot 2] 慢动作镜头，猎豹突然爆发，肌肉在皮毛下剧烈起伏，四肢在空中完全舒展。\n[Shot 3] 镜头跟随猎豹疾驰，背景变得模糊，展现出极致的速度与野性之美。"
+  },
+  {
+    id: "doc-whale",
+    category: "documentary",
+    title: { zh: "深海巨鲸", en: "Deep Sea Whale" },
+    concept: "[Shot 1] 深邃湛蓝的海水中，一头巨大的座头鲸缓慢游动，阳光从海面透射下来，形成神圣的光柱。\n[Shot 2] 镜头跟随鲸鱼巨大的尾鳍摆动，展现出海洋生物的优雅与力量感。\n[Shot 3] 鲸鱼发出的低频鸣叫声仿佛在深海中回荡，营造出宁静而壮阔的纪实氛围。"
+  },
+  {
+    id: "abstract-fluid",
+    category: "abstract",
+    title: { zh: "流动的色彩", en: "Fluid Colors" },
+    concept: "[Shot 1] 宏观摄影，深蓝色的墨水滴入清措的水中，缓慢扩散并交织成梦幻的丝绸状纹理。\n[Shot 2] 镜头快速穿梭在不断变化的色彩隧道中，光影交错，产生强烈的视觉冲击力。\n[Shot 3] 金色的粉末在液体中旋转升腾，形成类似星系的螺旋结构，充满艺术张力。"
+  },
+  {
+    id: "abstract-geo",
+    category: "abstract",
+    title: { zh: "几何光影", en: "Geometric Light" },
+    concept: "[Shot 1] 纯白色的极简空间，巨大的几何体在缓慢旋转，投射出不断变化的锐利阴影。\n[Shot 2] 镜头快速穿过一系列平行的光栅，产生强烈的频闪视觉效果，充满现代艺术感。\n[Shot 3] 空间开始扭曲折叠，光影交织成复杂的莫比乌斯环结构，探索维度与空间的边界。"
   }
 ];
