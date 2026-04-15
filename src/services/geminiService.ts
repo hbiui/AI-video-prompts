@@ -1,6 +1,24 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// Lazy initialization helper
+let _ai: GoogleGenAI | null = null;
+function getAiClient() {
+  if (!_ai) {
+    let apiKey = "";
+    try {
+      apiKey = process.env.GEMINI_API_KEY || "";
+    } catch (e) {
+      // process might not be defined in some environments
+      console.warn("process.env is not available");
+    }
+    
+    if (!apiKey) {
+      console.warn("GEMINI_API_KEY is not defined. Please check your .env file.");
+    }
+    _ai = new GoogleGenAI({ apiKey: apiKey || "dummy_key" });
+  }
+  return _ai;
+}
 
 export type ModelType = "Seedance 2.0" | "Kling 3.0 Omni";
 export type LanguageType = "Chinese" | "English";
@@ -84,7 +102,7 @@ export async function generateVideoPrompt(
   }
 
   // Default to system Gemini
-  return runGeminiGeneration(ai, userInput, model, language, normalizedImages);
+  return runGeminiGeneration(getAiClient(), userInput, model, language, normalizedImages);
 }
 
 async function runGeminiGeneration(

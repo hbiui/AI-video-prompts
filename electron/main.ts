@@ -29,9 +29,14 @@ function createWindow() {
     title: 'AI Video Prompt Director',
   })
 
-  // Test active push message to Renderer-process.
-  win.webContents.on('did-finish-load', () => {
-    win?.webContents.send('main-process-message', (new Date).toLocaleString())
+  // Open devtools in development
+  if (!app.isPackaged) {
+    win.webContents.openDevTools()
+  }
+
+  win.webContents.on('did-fail-load', () => {
+    console.error('Failed to load window')
+    win?.loadFile(path.join(process.env.DIST, 'index.html'))
   })
 
   if (process.env.VITE_DEV_SERVER_URL) {

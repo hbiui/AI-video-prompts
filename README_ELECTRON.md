@@ -14,13 +14,30 @@ This project is configured to be packaged as a desktop application for Windows (
     ```bash
     npm install
     ```
+    > **IMPORTANT:** Do NOT run `npm audit fix --force`. This command may upgrade core dependencies to incompatible versions, causing the application to display a blank screen.
+
 3.  **Set up your API Key:**
     Create a `.env` file in the root directory and add your Gemini API key:
     ```env
     GEMINI_API_KEY=your_api_key_here
     ```
+    **Note:** Without this key, the app will start but AI generation features will not work.
 
-## Development
+## Troubleshooting (Blank Screen)
+
+If you see a blank screen when running the app:
+
+1.  **Check the Console:** In development mode, the app will automatically open Chrome DevTools. Look for red error messages in the "Console" tab.
+2.  **Check .env File:** Ensure your `.env` file exists in the root directory and contains a valid `GEMINI_API_KEY`.
+3.  **Reinstall Cleanly:** If you previously ran `npm audit fix --force`, delete your `node_modules` and `package-lock.json`, then run `npm install` again.
+    ```bash
+    rm -rf node_modules package-lock.json
+    npm install
+    ```
+4.  **Vite Cache:** Try clearing the Vite cache:
+    ```bash
+    npx vite optimize --force
+    ```
 
 To run the app in development mode with Electron:
 ```bash
