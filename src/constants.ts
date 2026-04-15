@@ -53,8 +53,8 @@ export const translations = {
     imageLabel: "图片",
     dropImages: "拖拽图片至此上传",
     modelNames: {
-      "Seedance 2.0": "种子舞 2.0",
-      "Kling 3.0 Omni": "Kling 3.0 全能"
+      "Seedance 2.0": "Seedance 2.0",
+      "Kling 3.0 Omni": "Kling 3.0 Omni"
     },
     settings: "设置",
     apiConfig: "API 配置",

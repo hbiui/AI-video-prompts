@@ -1306,7 +1306,7 @@ export default function App() {
                     onChange={handleTextareaChange}
                     onScroll={handleScroll}
                     placeholder={t.placeholder}
-                    className="w-full min-h-[120px] p-3 bg-transparent border-none outline-none resize-y font-mono text-sm leading-relaxed text-transparent caret-brand-primary block"
+                    className="w-full min-h-[420px] p-3 bg-transparent border-none outline-none resize-y font-mono text-sm leading-relaxed text-transparent caret-brand-primary block"
                   />
                 </div>
               </div>

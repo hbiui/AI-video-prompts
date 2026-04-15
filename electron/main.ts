@@ -32,6 +32,8 @@ function createWindow() {
     title: 'AI Video Prompt Director',
   })
 
+  win.setMenu(null)
+
   // Intercept navigation to open external links in default browser
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('http')) {
