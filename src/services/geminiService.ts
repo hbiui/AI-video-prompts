@@ -108,6 +108,45 @@ async function universalFetch(url: string, options: any) {
   return fetch(url, options);
 }
 
+// Helper to format API errors into user-friendly messages
+function formatApiError(error: any, provider: string): string {
+  console.error(`${provider} API Error:`, error);
+  
+  const message = error.message || String(error);
+  
+  // Rate limiting
+  if (message.includes("429") || message.toLowerCase().includes("rate limit") || message.includes("quota")) {
+    return "请求过于频繁或额度不足，请稍后再试 (Rate Limit / Quota Exceeded)";
+  }
+  
+  // Invalid API Key
+  if (message.includes("401") || message.toLowerCase().includes("invalid api key") || message.toLowerCase().includes("unauthorized") || message.toLowerCase().includes("api_key_invalid")) {
+    return "API 密钥无效，请检查设置 (Invalid API Key)";
+  }
+  
+  // Model not found
+  if (message.includes("404") || message.toLowerCase().includes("model not found") || message.toLowerCase().includes("not found")) {
+    return "找不到指定的模型或接口地址错误，请检查设置 (Model Not Found / Invalid Endpoint)";
+  }
+  
+  // Context length exceeded
+  if (message.toLowerCase().includes("context_length_exceeded") || message.toLowerCase().includes("too many tokens")) {
+    return "输入内容过长，请精简后重试 (Context Length Exceeded)";
+  }
+
+  // Network error
+  if (message.toLowerCase().includes("fetch") || message.toLowerCase().includes("network") || message.toLowerCase().includes("failed to fetch")) {
+    return "网络连接失败，请检查网络或代理设置 (Network Error)";
+  }
+
+  // Safety filters (Gemini specific)
+  if (message.toLowerCase().includes("safety") || message.toLowerCase().includes("blocked")) {
+    return "内容被安全过滤器拦截，请修改创意描述 (Blocked by Safety Filter)";
+  }
+
+  return `生成失败: ${message}`;
+}
+
 export async function testApiConnection(config: { provider: string; apiKey: string; baseUrl?: string; modelName?: string }): Promise<{ success: boolean; message: string }> {
   try {
     if (config.provider === "gemini") {
@@ -143,11 +182,12 @@ export async function testApiConnection(config: { provider: string; apiKey: stri
         return { success: true, message: `${config.provider.toUpperCase()} API 连接成功！` };
       } else {
         const data = await response.json().catch(() => ({}));
-        return { success: false, message: data.error?.message || `连接失败 (状态码: ${response.status})` };
+        const errorMsg = data.error?.message || `连接失败 (状态码: ${response.status})`;
+        return { success: false, message: formatApiError(new Error(errorMsg), config.provider) };
       }
     }
   } catch (error: any) {
-    return { success: false, message: error.message || "连接发生异常" };
+    return { success: false, message: formatApiError(error, config.provider) };
   }
 }
 
@@ -279,8 +319,7 @@ async function runGeminiGeneration(
       throw new Error("Failed to parse AI response as JSON.");
     }
   } catch (error) {
-    console.error("Gemini Generation Error:", error);
-    throw error;
+    throw new Error(formatApiError(error, "Gemini"));
   }
 }
 
@@ -343,7 +382,7 @@ async function callOpenAICompatible(
       } catch (e) {
         // Fallback if JSON parsing of error fails
       }
-      throw new Error(errorMessage);
+      throw new Error(formatApiError(new Error(errorMessage), apiConfig?.provider || "API"));
     }
 
     const data = await response.json();
@@ -359,8 +398,7 @@ async function callOpenAICompatible(
       console.error("OpenAI Parse Error. Raw content:", content);
       throw new Error("Failed to parse AI response as JSON. Please try again.");
     }
-  } catch (error) {
-    console.error("API Call Error:", error);
-    throw error;
+  } catch (error: any) {
+    throw new Error(error.message || "API Call Error");
   }
 }

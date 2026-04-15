@@ -1706,7 +1706,6 @@ export default function App() {
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-[10px] font-mono text-dim/50">V2.5.1-稳定版</span>
           <p className="text-[10px] font-mono text-dim">
             {t.footerDesign}
           </p>
