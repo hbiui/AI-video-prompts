@@ -67,6 +67,7 @@ interface HistoryItem {
   model: ModelType;
   language: LanguageType;
   technique?: string;
+  totalDuration?: number;
   images: ImageObject[];
   result: PromptResult;
 }
@@ -79,6 +80,8 @@ export default function App() {
   const [selectedModel, setSelectedModel] = useState<ModelType>("Seedance 2.0");
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageType>("Chinese");
   const [selectedTechnique, setSelectedTechnique] = useState<string>("");
+  const [isDurationEnabled, setIsDurationEnabled] = useState(false);
+  const [totalDuration, setTotalDuration] = useState<string>("");
   const [showTechniqueDropdown, setShowTechniqueDropdown] = useState(false);
   const [images, setImages] = useState<ImageObject[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -632,7 +635,8 @@ export default function App() {
         selectedLanguage, 
         images, 
         apiConfig.apiKey ? apiConfig : undefined,
-        selectedTechnique ? t.techniques[selectedTechnique as keyof typeof t.techniques] : undefined
+        selectedTechnique ? t.techniques[selectedTechnique as keyof typeof t.techniques] : undefined,
+        isDurationEnabled && totalDuration ? parseInt(totalDuration) : undefined
       );
       setResult(res);
       
@@ -644,6 +648,7 @@ export default function App() {
         model: selectedModel,
         language: selectedLanguage,
         technique: selectedTechnique,
+        totalDuration: isDurationEnabled && totalDuration ? parseInt(totalDuration) : undefined,
         images: [...images],
         result: res
       };
@@ -693,6 +698,8 @@ export default function App() {
     setSelectedModel("Seedance 2.0");
     setSelectedLanguage("Chinese");
     setSelectedTechnique("");
+    setIsDurationEnabled(false);
+    setTotalDuration("");
     setImages([]);
     setResult(null);
     setError(null);
@@ -703,6 +710,8 @@ export default function App() {
     setSelectedModel(item.model);
     setSelectedLanguage(item.language);
     setSelectedTechnique(item.technique || "");
+    setIsDurationEnabled(!!item.totalDuration);
+    setTotalDuration(item.totalDuration ? item.totalDuration.toString() : "");
     // Ensure images are objects and have IDs
     const normalizedImages = (item.images || []).map(img => {
       const base = typeof img === 'string' ? { url: img } : img;
@@ -1408,6 +1417,52 @@ export default function App() {
                     )}
                   </AnimatePresence>
                 </div>
+              </div>
+
+              {/* Total Video Duration */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <label className="label-micro">{t.totalDuration}</label>
+                    <span className="text-[10px] text-dim font-mono">{t.optional}</span>
+                  </div>
+                  <button
+                    onClick={() => setIsDurationEnabled(!isDurationEnabled)}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      isDurationEnabled ? 'bg-brand-primary' : 'bg-brand-border'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        isDurationEnabled ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                <AnimatePresence>
+                  {isDurationEnabled && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="flex items-center gap-2 bg-brand-surface border border-brand-border rounded-lg px-3 py-2 focus-within:border-brand-primary transition-all">
+                        <Timer className="w-4 h-4 text-muted" />
+                        <input
+                          type="number"
+                          value={totalDuration}
+                          onChange={(e) => setTotalDuration(e.target.value)}
+                          placeholder={t.durationPlaceholder}
+                          className="flex-1 bg-transparent border-none outline-none text-sm text-main font-mono"
+                          min="1"
+                        />
+                        <span className="text-xs text-muted font-bold">{t.durationUnit}</span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Creative Input */}

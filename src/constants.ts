@@ -104,6 +104,10 @@ export const translations = {
     videoTechnique: "视频手法",
     optional: "(可选)",
     selectTechnique: "选择一种视频手法 (可选)",
+    totalDuration: "视频总时长",
+    durationUnit: "秒 (S)",
+    enableDuration: "启用时长控制",
+    durationPlaceholder: "输入总时长...",
     techniques: {
       montage: "蒙太奇",
       longTake: "长镜头",
@@ -220,6 +224,10 @@ export const translations = {
     videoTechnique: "Video Technique",
     optional: "(Optional)",
     selectTechnique: "Select a video technique (optional)",
+    totalDuration: "Total Video Duration",
+    durationUnit: "Seconds (S)",
+    enableDuration: "Enable Duration Control",
+    durationPlaceholder: "Enter total duration...",
     techniques: {
       montage: "Montage",
       longTake: "Long Take",

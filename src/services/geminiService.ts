@@ -197,7 +197,8 @@ export async function generateVideoPrompt(
   language: LanguageType,
   images?: (string | ImageObject)[], // Support both old and new formats
   apiConfig?: { provider: string; apiKey: string; baseUrl?: string; modelName?: string },
-  technique?: string
+  technique?: string,
+  totalDuration?: number
 ): Promise<PromptResult> {
   // Normalize images to ImageObject[]
   const normalizedImages: ImageObject[] = (images || []).map(img => {
@@ -208,17 +209,17 @@ export async function generateVideoPrompt(
   // If custom API is provided and has a key, use the appropriate provider
   if (apiConfig && apiConfig.apiKey) {
     if (apiConfig.provider === "openai" || apiConfig.provider === "doubao" || apiConfig.provider === "custom") {
-      return callOpenAICompatible(userInput, model, language, normalizedImages, apiConfig, technique);
+      return callOpenAICompatible(userInput, model, language, normalizedImages, apiConfig, technique, totalDuration);
     }
     // For Gemini, we could re-initialize the client with the user's key
     if (apiConfig.provider === "gemini") {
       const userAi = new GoogleGenAI({ apiKey: apiConfig.apiKey });
-      return runGeminiGeneration(userAi, userInput, model, language, normalizedImages, apiConfig.modelName, technique);
+      return runGeminiGeneration(userAi, userInput, model, language, normalizedImages, apiConfig.modelName, technique, totalDuration);
     }
   }
 
   // Default to system Gemini
-  return runGeminiGeneration(getAiClient(), userInput, model, language, normalizedImages, undefined, technique);
+  return runGeminiGeneration(getAiClient(), userInput, model, language, normalizedImages, undefined, technique, totalDuration);
 }
 
 async function runGeminiGeneration(
@@ -228,7 +229,8 @@ async function runGeminiGeneration(
   language: LanguageType,
   images?: ImageObject[],
   customModelName?: string,
-  technique?: string
+  technique?: string,
+  totalDuration?: number
 ): Promise<PromptResult> {
   const modelName = customModelName || "gemini-3-flash-preview";
   
@@ -266,6 +268,7 @@ async function runGeminiGeneration(
 选择模型: ${model}
 输出语言: ${language}
 ${technique ? `指定视频手法: ${technique}` : ""}
+${totalDuration ? `指定视频总时长: ${totalDuration}秒。请确保生成的每个分镜 [Shot N] 后都带有该镜头的时长（例如 [Shot 1] (3s)），且所有分镜时长之和等于或略小于总时长。` : ""}
 
 请根据以上信息生成专业的视频提示词。`,
   });
@@ -332,7 +335,8 @@ async function callOpenAICompatible(
   language: LanguageType,
   images?: ImageObject[],
   apiConfig?: { provider: string; apiKey: string; baseUrl?: string; modelName?: string },
-  technique?: string
+  technique?: string,
+  totalDuration?: number
 ): Promise<PromptResult> {
   try {
     const baseUrl = apiConfig?.baseUrl || (apiConfig?.provider === "openai" ? "https://api.openai.com/v1" : "");
@@ -351,7 +355,7 @@ async function callOpenAICompatible(
       { 
         role: "user", 
         content: [
-          { type: "text", text: `用户创意: "${userInput}"\n选择模型: ${model}\n输出语言: ${language}\n${technique ? `指定视频手法: ${technique}\n` : ""}\n${imageContext}\n\n请根据以上信息生成专业的视频提示词。` },
+          { type: "text", text: `用户创意: "${userInput}"\n选择模型: ${model}\n输出语言: ${language}\n${technique ? `指定视频手法: ${technique}\n` : ""}${totalDuration ? `指定视频总时长: ${totalDuration}秒。请确保生成的每个分镜 [Shot N] 后都带有该镜头的时长（例如 [Shot 1] (3s)），且所有分镜时长之和等于或略小于总时长。\n` : ""}\n${imageContext}\n\n请根据以上信息生成专业的视频提示词。` },
           ...(images || [])
             .filter(img => img.url && typeof img.url === 'string')
             .map(img => ({
