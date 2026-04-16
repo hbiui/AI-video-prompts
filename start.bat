@@ -1,63 +1,53 @@
 @echo off
-:: Set code page to UTF-8 to support potential special characters, 
-:: though we use English here to ensure maximum compatibility across different Windows locales.
-chcp 65001 >nul
-setlocal enabledelayedexpansion
 title AI Director - Startup Script
 
-echo ==========================================
-echo    AI Director - Environment Check
-echo ==========================================
-echo.
+:: 1. Check Node.js environment
+echo [*] Checking Node.js environment...
+node -v >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Node.js is not installed or not in your PATH.
+    echo Please download and install Node.js from: https://nodejs.org/
+    echo.
+    pause
+    exit
+)
 
-set NEED_INSTALL=0
-
-:: 1. Check if node_modules folder exists
+:: 2. Check node_modules folder
 if not exist node_modules (
-    echo [!] node_modules folder not found.
-    set NEED_INSTALL=1
-) else (
-    echo [*] Checking dependency integrity...
-    :: Check if dependencies are missing or outdated
-    call npm list --depth=0 >nul 2>&1
-    if !errorlevel! neq 0 (
-        echo [!] Dependencies are missing or need update.
-        set NEED_INSTALL=1
-    ) else (
-        echo [OK] Dependencies are healthy.
-    )
+    echo [!] node_modules folder is missing.
+    goto :install
 )
 
-:: 2. Prompt for installation if needed
-if %NEED_INSTALL%==1 (
-    echo.
-    set /p choice="Dependencies are missing. Install now? (Y/N): "
-    if /i "!choice!"=="Y" (
-        echo [*] Running npm install, please wait...
-        call npm install
-        if !errorlevel! neq 0 (
-            echo.
-            echo [X] Installation failed. Please check your network or Node.js environment.
-            pause
-            exit /b 1
-        )
-        echo [OK] Installation complete.
-    ) else (
-        echo [!] Installation skipped. The app may fail to start.
-    )
+:: 3. Verify dependency integrity
+echo [*] Verifying dependencies...
+call npm list --depth=0 >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [!] Dependencies are incomplete or outdated.
+    set /p choice=Would you like to repair/install dependencies? (Y/N): 
+    if /i "%choice%"=="Y" goto :install
 )
 
+:start_app
 echo.
-echo [*] Starting dev server (npm run dev)...
+echo [*] Starting Application (npm run dev)...
 echo ==========================================
-echo.
-
-:: 3. Start the application
 call npm run dev
-
-if !errorlevel! neq 0 (
+if %errorlevel% neq 0 (
     echo.
-    echo [X] Application exited with an error.
+    echo [X] Application crashed or stopped unexpectedly.
+    pause
 )
+exit
 
-pause
+:install
+echo.
+echo [*] Installing dependencies, this may take a few minutes...
+call npm install
+if %errorlevel% neq 0 (
+    echo.
+    echo [X] npm install failed. Please check your internet connection.
+    pause
+    exit
+)
+echo [OK] Installation successful.
+goto :start_app
