@@ -1450,7 +1450,7 @@ export default function App() {
           {/* Tab Switcher */}
           <div className="flex bg-brand-surface border border-brand-border rounded p-1 self-start">
             <button
-              onClick={() => setActiveTab("director")}
+              onClick={() => { setActiveTab("director"); setError(null); }}
               className={`px-4 py-1.5 rounded text-[10px] font-bold transition-all flex items-center gap-2 ${
                 activeTab === "director" 
                   ? "bg-brand-primary text-black shadow-sm" 
@@ -1461,7 +1461,7 @@ export default function App() {
               {t.directorTab}
             </button>
             <button
-              onClick={() => setActiveTab("reverse")}
+              onClick={() => { setActiveTab("reverse"); setError(null); }}
               className={`px-4 py-1.5 rounded text-[10px] font-bold transition-all flex items-center gap-2 ${
                 activeTab === "reverse" 
                   ? "bg-brand-primary text-black shadow-sm" 
@@ -1940,6 +1940,20 @@ export default function App() {
                       ))}
                     </div>
                   </div>
+
+                  {/* Tip Area */}
+                  <div className="flex items-start gap-2 p-3 bg-brand-primary/5 border border-brand-primary/10 rounded-lg">
+                    <Info className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
+                    <p className="text-[10px] text-muted leading-relaxed">
+                      {t.reverseTip}
+                    </p>
+                  </div>
+
+                  {error && (
+                    <div className="text-red-500 text-xs font-mono bg-red-500/10 p-2 border border-red-500/20 rounded">
+                      {error}
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-6 pt-0 mt-auto">

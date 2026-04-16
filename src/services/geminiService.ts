@@ -586,9 +586,49 @@ export async function reverseVideoPrompt(
 
       return result.text || "";
     } else {
-      // For OpenAI/Custom, we might need to send frames or just the URL if supported
-      // For now, let's focus on Gemini as it's the most capable for video
-      throw new Error("目前视频反推功能仅支持 Gemini 模型。请在设置中切换至 Gemini 服务商。");
+      // Generic OpenAI-compatible call for reverse prompt
+      const baseUrl = apiConfig?.baseUrl || (apiConfig?.provider === "openai" ? "https://api.openai.com/v1" : "");
+      if (!baseUrl && apiConfig?.provider === "custom") throw new Error("Base URL is required for custom provider");
+      
+      const endpoint = `${baseUrl}/chat/completions`;
+      const defaultModel = apiConfig?.provider === "openai" ? "gpt-4o" : "doubao-pro-32k";
+      const modelToUse = apiConfig?.modelName || defaultModel;
+
+      const content: any[] = [
+        { type: "text", text: `请分析这段视频并反推其生成提示词。输出语言: ${language}\n\n${systemInstruction}` }
+      ];
+
+      if (videoSource.type === 'url') {
+        content.push({ type: "text", text: `视频链接: ${videoSource.data}` });
+      } else {
+        // For files, we try to send as a data URL if the provider supports it
+        // Note: Most OpenAI-compatible APIs expect frames as images for video analysis
+        content.push({ 
+          type: "text", 
+          text: "[视频文件输入] 提示：当前模型可能不支持直接处理视频文件，建议使用视频链接或切换至 Gemini 模型以获得最佳效果。" 
+        });
+      }
+
+      const response = await universalFetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiConfig?.apiKey}`
+        },
+        body: JSON.stringify({
+          model: modelToUse,
+          messages: [{ role: "user", content }],
+          max_tokens: 2048
+        })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error?.message || `API 请求失败 (状态码: ${response.status})`);
+      }
+
+      const data = await response.json();
+      return data.choices?.[0]?.message?.content || "";
     }
   } catch (error: any) {
     throw new Error(formatApiError(error, apiConfig?.provider || "Gemini"));
