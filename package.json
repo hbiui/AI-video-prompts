@@ -3,15 +3,16 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "vite --port=3000 --host=0.0.0.0",
+    "dev": "tsx server.ts",
+    "electron:dev": "IS_ELECTRON=true vite",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist dist-electron",
     "lint": "tsc --noEmit",
-    "electron:build": "vite build && electron-builder"
+    "electron:build": "IS_ELECTRON=true vite build && electron-builder"
   },
+  "main": "dist-electron/main.js",
   "build": {
     "appId": "com.director.app",
     "productName": "AI Video Prompt Director",
@@ -39,25 +40,24 @@
     "@google/genai": "^1.29.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
+    "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-mentions": "^4.4.10",
-    "vite": "^6.2.0"
+    "react-mentions": "^4.4.10"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
-    "autoprefixer": "^10.4.21",
-    "electron": "^34.0.0",
+    "electron": "^41.2.1",
     "electron-builder": "^26.8.1",
-    "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0",
+    "vite": "^5.4.10",
     "vite-plugin-electron": "^0.29.1",
     "vite-plugin-electron-renderer": "^0.14.6"
   }

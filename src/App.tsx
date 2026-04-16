@@ -101,12 +101,20 @@ export default function App() {
   const [result, setResult] = useState<PromptResult | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reverseError, setReverseError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [userTemplates, setUserTemplates] = useState<PromptTemplate[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [apiConfig, setApiConfig] = useState<ApiConfig>({ provider: "gemini", apiKey: "" });
+  const [providerConfigs, setProviderConfigs] = useState<Record<string, Partial<ApiConfig>>>({
+    gemini: { apiKey: "", modelName: "gemini-3.1-pro-preview" },
+    openai: { apiKey: "", modelName: "gpt-4o", baseUrl: "https://api.openai.com/v1" },
+    doubao: { apiKey: "", modelName: "Doubao-pro-32k", baseUrl: "https://ark.cn-beijing.volces.com/api/v3" },
+    anthropic: { apiKey: "", modelName: "claude-3-5-sonnet-20240620", baseUrl: "https://api.anthropic.com/v1" },
+    custom: { apiKey: "", modelName: "", baseUrl: "" }
+  });
   const [compressionConfig, setCompressionConfig] = useState<CompressionConfig>({
     enabled: true,
     quality: 0.7,
@@ -225,6 +233,15 @@ export default function App() {
       }
     }
 
+    const savedProviderConfigs = localStorage.getItem("director_provider_configs");
+    if (savedProviderConfigs) {
+      try {
+        setProviderConfigs(JSON.parse(savedProviderConfigs));
+      } catch (e) {
+        console.error("Failed to parse provider configs", e);
+      }
+    }
+
     const savedCompressionConfig = localStorage.getItem("director_compression_config");
     if (savedCompressionConfig) {
       try {
@@ -323,6 +340,54 @@ export default function App() {
       console.error("Failed to save api config to localStorage:", e);
     }
   }, [apiConfig]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("director_provider_configs", JSON.stringify(providerConfigs));
+    } catch (e) {
+      console.error("Failed to save provider configs to localStorage:", e);
+    }
+  }, [providerConfigs]);
+
+  useEffect(() => {
+    if (!apiConfig.provider) return;
+    setProviderConfigs(prev => {
+      const current = prev[apiConfig.provider];
+      if (current && 
+          current.apiKey === apiConfig.apiKey && 
+          current.baseUrl === apiConfig.baseUrl && 
+          current.modelName === apiConfig.modelName) {
+        return prev;
+      }
+      return {
+        ...prev,
+        [apiConfig.provider]: {
+          apiKey: apiConfig.apiKey,
+          baseUrl: apiConfig.baseUrl,
+          modelName: apiConfig.modelName
+        }
+      };
+    });
+  }, [apiConfig.apiKey, apiConfig.baseUrl, apiConfig.modelName, apiConfig.provider]);
+
+  const handleProviderChange = (newProvider: ApiConfig["provider"]) => {
+    const config = providerConfigs[newProvider] || {};
+    setApiConfig({
+      provider: newProvider,
+      apiKey: config.apiKey || "",
+      baseUrl: config.baseUrl || (
+        newProvider === "openai" ? "https://api.openai.com/v1" :
+        newProvider === "anthropic" ? "https://api.anthropic.com/v1" :
+        newProvider === "doubao" ? "https://ark.cn-beijing.volces.com/api/v3" : ""
+      ),
+      modelName: config.modelName || (
+        newProvider === "gemini" ? "gemini-3.1-pro-preview" :
+        newProvider === "openai" ? "gpt-4o" :
+        newProvider === "doubao" ? "Doubao-pro-32k" :
+        newProvider === "anthropic" ? "claude-3-5-sonnet-20240620" : ""
+      )
+    });
+  };
 
   const mirrorRef = useRef<HTMLDivElement>(null);
 
@@ -630,16 +695,16 @@ export default function App() {
 
   const handleReversePrompt = async () => {
     if (reverseMode === "file" && !reverseFile) {
-      setError(t.dropVideo);
+      setReverseError(t.dropVideo);
       return;
     }
     if ((reverseMode === "youtube" || reverseMode === "url") && !reverseUrl) {
-      setError(reverseMode === "youtube" ? t.pasteYoutube : t.pasteVideoUrl);
+      setReverseError(reverseMode === "youtube" ? t.pasteYoutube : t.pasteVideoUrl);
       return;
     }
 
     setIsReversing(true);
-    setError(null);
+    setReverseError(null);
     setReverseSuccess(false);
 
     try {
@@ -656,7 +721,7 @@ export default function App() {
         setReverseSuccess(false);
       }, 2000);
     } catch (err: any) {
-      setError(err.message || t.errorFailed);
+      setReverseError(err.message || t.errorFailed);
     } finally {
       setIsReversing(false);
     }
@@ -713,8 +778,8 @@ export default function App() {
         result: res
       };
       setHistory(prev => [newItem, ...prev].slice(0, compressionConfig.historyCapacity));
-    } catch (err) {
-      setError(t.errorFailed);
+    } catch (err: any) {
+      setError(err.message || t.errorFailed);
       console.error(err);
     } finally {
       setIsGenerating(false);
@@ -958,7 +1023,7 @@ export default function App() {
                       <label className="text-[10px] font-bold text-muted uppercase tracking-widest">{t.apiProvider}</label>
                       <select 
                         value={apiConfig.provider}
-                        onChange={(e) => setApiConfig({...apiConfig, provider: e.target.value as any})}
+                        onChange={(e) => handleProviderChange(e.target.value as any)}
                         className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-sm focus:border-brand-primary outline-none transition-all appearance-none"
                       >
                         <option value="gemini">Google Gemini</option>
@@ -1450,7 +1515,7 @@ export default function App() {
           {/* Tab Switcher */}
           <div className="flex bg-brand-surface border border-brand-border rounded p-1 self-start">
             <button
-              onClick={() => { setActiveTab("director"); setError(null); }}
+              onClick={() => { setActiveTab("director"); setError(null); setReverseError(null); }}
               className={`px-4 py-1.5 rounded text-[10px] font-bold transition-all flex items-center gap-2 ${
                 activeTab === "director" 
                   ? "bg-brand-primary text-black shadow-sm" 
@@ -1461,7 +1526,7 @@ export default function App() {
               {t.directorTab}
             </button>
             <button
-              onClick={() => { setActiveTab("reverse"); setError(null); }}
+              onClick={() => { setActiveTab("reverse"); setError(null); setReverseError(null); }}
               className={`px-4 py-1.5 rounded text-[10px] font-bold transition-all flex items-center gap-2 ${
                 activeTab === "reverse" 
                   ? "bg-brand-primary text-black shadow-sm" 
@@ -1942,16 +2007,28 @@ export default function App() {
                   </div>
 
                   {/* Tip Area */}
-                  <div className="flex items-start gap-2 p-3 bg-brand-primary/5 border border-brand-primary/10 rounded-lg">
-                    <Info className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
-                    <p className="text-[10px] text-muted leading-relaxed">
-                      {t.reverseTip}
-                    </p>
+                  <div className="flex flex-col gap-2 p-3 bg-brand-primary/5 border border-brand-primary/10 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <Info className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
+                      <p className="text-[10px] text-muted leading-relaxed">
+                        {t.reverseTip}
+                      </p>
+                    </div>
+                    {apiConfig.provider !== "gemini" && (
+                      <div className="flex items-start gap-2 pt-2 border-t border-brand-primary/10">
+                        <Sparkles className="w-3.5 h-3.5 text-brand-primary shrink-0 mt-0.5" />
+                        <p className="text-[9px] text-brand-text/80 leading-relaxed italic">
+                          {uiLang === "zh" 
+                            ? "提示：视频反推功能在 Gemini 模型下效果最佳。当前模型可能无法处理视频文件。" 
+                            : "Tip: Video reverse works best with Gemini models. Current provider may not support direct video file analysis."}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
-                  {error && (
+                  {reverseError && (
                     <div className="text-red-500 text-xs font-mono bg-red-500/10 p-2 border border-red-500/20 rounded">
-                      {error}
+                      {reverseError}
                     </div>
                   )}
                 </div>
