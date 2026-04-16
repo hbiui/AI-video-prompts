@@ -33,12 +33,13 @@ import {
   Columns,
   Scissors,
   ArrowLeftRight,
-  Video,
   Link,
   Youtube,
   Upload,
   ArrowRight,
-  CheckCircle2
+  CheckCircle2,
+  ChevronDown,
+  Loader2
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -1723,9 +1724,10 @@ export default function App() {
                   </>
                 )}
               </div>
-            </section>
-          </motion.div>
-        ) : (
+            </div>
+          </section>
+        </motion.div>
+      ) : (
             <motion.div 
               key="reverse-panel"
               initial={{ opacity: 0, x: 20 }}

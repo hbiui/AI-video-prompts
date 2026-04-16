@@ -429,7 +429,7 @@ export async function reverseVideoPrompt(
   try {
     if (apiConfig?.provider === "gemini" || !apiConfig) {
       const client = apiConfig?.apiKey ? new GoogleGenAI({ apiKey: apiConfig.apiKey }) : getAiClient();
-      const model = client.models.get({ model: apiConfig?.modelName || "gemini-1.5-pro" });
+      const modelName = apiConfig?.modelName || "gemini-1.5-pro";
 
       const parts: any[] = [];
       
@@ -447,14 +447,15 @@ export async function reverseVideoPrompt(
 
       parts.push({ text: `请分析这段视频并反推其生成提示词。输出语言: ${language}` });
 
-      const result = await model.generateContent({
+      const result = await client.models.generateContent({
+        model: modelName,
         contents: [{ role: "user", parts }],
         config: {
           systemInstruction,
         }
       });
 
-      return result.response.text();
+      return result.text || "";
     } else {
       // For OpenAI/Custom, we might need to send frames or just the URL if supported
       // For now, let's focus on Gemini as it's the most capable for video
