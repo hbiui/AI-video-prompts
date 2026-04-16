@@ -60,7 +60,7 @@ const SYSTEM_INSTRUCTION = `你是一位顶级的 AI 视频生成提示词工程
 - **特性**：支持最长 15秒；原生音效同步；支持最多 9 张参考图（使用 @Character1, @Image1 等标签）。
 - **长度**：100-260 词。
 - **指令**：使用分镜表语言，如 [Shot 1], [Shot 2], [Cut to]。禁止堆砌无意义形容词。
-- **多分镜支持**：若用户在输入中使用 [Shot 1], [Shot 2] 等标签，你必须尊重并扩展这些具体的分镜描述，确保每个分镜都符合上述 6 步公式，并用 [Shot N] 标签清晰分隔。
+- **多分镜支持**：你必须根据创意复杂度自动决定分镜数量。确保每个分镜都符合上述 6 步公式，并用 [Shot N] 标签清晰分隔。
 
 #### 2. Kling 3.0 Omni (快手) 专属标准：
 - **结构**：严格遵守“主体及外貌 + 动作 + 环境 + 镜头运动 + 音频氛围”的 5 部分结构。
@@ -68,7 +68,15 @@ const SYSTEM_INSTRUCTION = `你是一位顶级的 AI 视频生成提示词工程
 - **参考引用**：使用 <<<image_1>>> 等标签引用图片。
 - **指令**：支持单次生成最多 6 个分镜，格式如 Shot 1 (3s)。
 
-#### 3. 通用最优解：
+#### 3. 动态分镜规划 (Dynamic Shot Planning)：
+- **分镜数量决定**：不要使用固定数量的分镜。你应该根据以下因素自动推导分镜数量：
+    - **视频总时长**：若指定了总时长，通常每 2-5 秒规划一个分镜。
+    - **创意复杂度**：复杂的叙事或多场景转换需要更多分镜。
+    - **视频手法**：若指定了特定手法（如“希区柯克变焦”或“长镜头”），分镜规划应体现该手法的专业性。
+    - **参考素材**：若提供了多张参考图，应规划分镜来合理展示这些素材。
+- **时长分配**：若指定了总时长，请合理分配到每个分镜，确保总和一致。
+
+#### 4. 通用最优解：
 - 避免使用“漂亮”、“好看”等模糊词。
 - 景别（特写、中景、全景）和运镜方式（推、拉、摇、移）为必填项。
 - 若有图片，聚焦描述“图片中元素将要发生的动作和运动轨迹”，而非重复描述视觉特征。
@@ -77,7 +85,7 @@ const SYSTEM_INSTRUCTION = `你是一位顶级的 AI 视频生成提示词工程
 请返回 JSON 格式的数据，包含以下字段：
 - mainPrompt: 优化后的专业提示词（根据用户选择的语言）。
 - translation: 对应语言的翻译版本。
-- parameters: 包含 model, duration, motionIntensity (仅Kling), shotCount。
+- parameters: 包含 model, duration, motionIntensity (仅Kling), shotCount (实际生成的分镜数量)。
 - suggestions: 4-6个分类建议，每个建议包含 category (如 "Cinematic", "Action", "Atmosphere", "Lighting") 和 text (具体的微调指令)。`;
 
 export interface ImageObject {
@@ -237,7 +245,7 @@ async function callAnthropic(
     }).join("\n");
 
     const userContent: any[] = [
-      { type: "text", text: `用户创意: "${userInput}"\n选择模型: ${model}\n输出语言: ${language}\n${technique ? `指定视频手法: ${technique}\n` : ""}${totalDuration ? `指定视频总时长: ${totalDuration}秒。请确保生成的每个分镜 [Shot N] 后都带有该镜头的时长（例如 [Shot 1] (3s)），且所有分镜时长之和等于或略小于总时长。\n` : ""}\n${imageContext}\n\n请根据以上信息生成专业的视频提示词。` }
+      { type: "text", text: `用户创意: "${userInput}"\n选择模型: ${model}\n输出语言: ${language}\n${technique ? `指定视频手法: ${technique}\n` : ""}${totalDuration ? `指定视频总时长: ${totalDuration}秒。\n` : ""}\n${imageContext}\n\n请根据以上信息，结合视频时长、手法和创意复杂度，自动推导并决定最合适的分镜数量，生成专业的视频提示词。确保分镜时长之和等于总时长。` }
     ];
 
     if (images && images.length > 0) {
@@ -387,9 +395,9 @@ async function runGeminiGeneration(
 选择模型: ${model}
 输出语言: ${language}
 ${technique ? `指定视频手法: ${technique}` : ""}
-${totalDuration ? `指定视频总时长: ${totalDuration}秒。请确保生成的每个分镜 [Shot N] 后都带有该镜头的时长（例如 [Shot 1] (3s)），且所有分镜时长之和等于或略小于总时长。` : ""}
+${totalDuration ? `指定视频总时长: ${totalDuration}秒。` : ""}
 
-请根据以上信息生成专业的视频提示词。`,
+请根据以上信息，结合视频时长、手法和创意复杂度，自动推导并决定最合适的分镜数量，生成专业的视频提示词。确保分镜时长之和等于总时长。`,
   });
 
   try {
@@ -474,7 +482,7 @@ async function callOpenAICompatible(
       { 
         role: "user", 
         content: [
-          { type: "text", text: `用户创意: "${userInput}"\n选择模型: ${model}\n输出语言: ${language}\n${technique ? `指定视频手法: ${technique}\n` : ""}${totalDuration ? `指定视频总时长: ${totalDuration}秒。请确保生成的每个分镜 [Shot N] 后都带有该镜头的时长（例如 [Shot 1] (3s)），且所有分镜时长之和等于或略小于总时长。\n` : ""}\n${imageContext}\n\n请根据以上信息生成专业的视频提示词。` },
+          { type: "text", text: `用户创意: "${userInput}"\n选择模型: ${model}\n输出语言: ${language}\n${technique ? `指定视频手法: ${technique}\n` : ""}${totalDuration ? `指定视频总时长: ${totalDuration}秒。\n` : ""}\n${imageContext}\n\n请根据以上信息，结合视频时长、手法和创意复杂度，自动推导并决定最合适的分镜数量，生成专业的视频提示词。确保分镜时长之和等于总时长。` },
           ...(images || [])
             .filter(img => img.url && typeof img.url === 'string')
             .map(img => ({
@@ -536,7 +544,7 @@ export async function reverseVideoPrompt(
   language: LanguageType,
   apiConfig?: { provider: string; apiKey: string; baseUrl?: string; modelName?: string }
 ): Promise<string> {
-  const systemInstruction = `你是一位顶级的视频分析专家和提示词反推架构师。
+  const systemInstruction = `你是一位顶级的视频 analysis 专家和提示词反推架构师。
 你的任务是深度分析用户提供的视频，并将其反推为高质量的视频生成提示词。
 
 ### 输出要求：
