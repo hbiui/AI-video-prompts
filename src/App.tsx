@@ -33,11 +33,17 @@ import {
   Columns,
   Scissors,
   ArrowLeftRight,
-  ChevronDown
+  Video,
+  Link,
+  Youtube,
+  Upload,
+  ArrowRight,
+  CheckCircle2
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   generateVideoPrompt, 
+  reverseVideoPrompt,
   ModelType, 
   LanguageType, 
   PromptResult,
@@ -79,6 +85,12 @@ export default function App() {
   const [userInput, setUserInput] = useState("");
   const [selectedModel, setSelectedModel] = useState<ModelType>("Seedance 2.0");
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageType>("Chinese");
+  const [activeTab, setActiveTab] = useState<"director" | "reverse">("director");
+  const [reverseMode, setReverseMode] = useState<"youtube" | "url" | "file">("url");
+  const [reverseUrl, setReverseUrl] = useState("");
+  const [reverseFile, setReverseFile] = useState<string | null>(null);
+  const [isReversing, setIsReversing] = useState(false);
+  const [reverseSuccess, setReverseSuccess] = useState(false);
   const [selectedTechnique, setSelectedTechnique] = useState<string>("");
   const [isDurationEnabled, setIsDurationEnabled] = useState(false);
   const [totalDuration, setTotalDuration] = useState<string>("");
@@ -127,6 +139,8 @@ export default function App() {
     { id: "matchCut", icon: Scissors },
     { id: "fadeTransition", icon: ArrowLeftRight },
   ];
+
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   // Theme effect
   useEffect(() => {
@@ -613,6 +627,51 @@ export default function App() {
     }, 0);
   };
 
+  const handleReversePrompt = async () => {
+    if (reverseMode === "file" && !reverseFile) {
+      setError(t.dropVideo);
+      return;
+    }
+    if ((reverseMode === "youtube" || reverseMode === "url") && !reverseUrl) {
+      setError(reverseMode === "youtube" ? t.pasteYoutube : t.pasteVideoUrl);
+      return;
+    }
+
+    setIsReversing(true);
+    setError(null);
+    setReverseSuccess(false);
+
+    try {
+      const source = reverseMode === "file" 
+        ? { type: 'file' as const, data: reverseFile! }
+        : { type: 'url' as const, data: reverseUrl };
+      
+      const result = await reverseVideoPrompt(source, selectedLanguage, apiConfig.apiKey ? apiConfig : undefined);
+      
+      setUserInput(result);
+      setReverseSuccess(true);
+      setTimeout(() => {
+        setActiveTab("director");
+        setReverseSuccess(false);
+      }, 2000);
+    } catch (err: any) {
+      setError(err.message || t.errorFailed);
+    } finally {
+      setIsReversing(false);
+    }
+  };
+
+  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setReverseFile(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleGenerate = async (customInput?: string) => {
     if (customInput) {
       setUserInput(customInput);
@@ -828,6 +887,32 @@ export default function App() {
           </p>
         </div>
         <div className="flex items-center gap-4">
+          {/* Tab Switcher */}
+          <div className="flex bg-brand-surface border border-brand-border rounded p-1">
+            <button
+              onClick={() => setActiveTab("director")}
+              className={`px-3 py-1 rounded text-[10px] font-bold transition-all flex items-center gap-1.5 ${
+                activeTab === "director" 
+                  ? "bg-brand-primary text-black shadow-sm" 
+                  : "text-muted hover:text-main"
+              }`}
+            >
+              <Cpu className="w-3 h-3" />
+              {t.directorTab}
+            </button>
+            <button
+              onClick={() => setActiveTab("reverse")}
+              className={`px-3 py-1 rounded text-[10px] font-bold transition-all flex items-center gap-1.5 ${
+                activeTab === "reverse" 
+                  ? "bg-brand-primary text-black shadow-sm" 
+                  : "text-muted hover:text-main"
+              }`}
+            >
+              <Video className="w-3 h-3" />
+              {t.reverseTab}
+            </button>
+          </div>
+
           <button 
             onClick={() => setShowTemplates(!showTemplates)}
             className={`flex items-center gap-2 px-3 py-1.5 rounded border transition-colors text-[10px] font-bold ${
@@ -1285,8 +1370,16 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* Left Column: Input Panel */}
-        <div ref={leftPanelRef} className="lg:col-span-5 flex flex-col gap-6 lg:overflow-y-auto lg:pr-2 custom-scrollbar min-h-0 pb-4">
+        <AnimatePresence mode="wait">
+          {activeTab === "director" ? (
+            <motion.div 
+              key="director-panel"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              ref={leftPanelRef} 
+              className="lg:col-span-5 flex flex-col gap-6 lg:overflow-y-auto lg:pr-2 custom-scrollbar min-h-0 pb-4"
+            >
           <section className="console-panel flex flex-col shrink-0">
             <div className="console-header">
               <div className="flex items-center gap-2">
@@ -1630,9 +1723,153 @@ export default function App() {
                   </>
                 )}
               </div>
-            </div>
-          </section>
-        </div>
+            </section>
+          </motion.div>
+        ) : (
+            <motion.div 
+              key="reverse-panel"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="lg:col-span-5 flex flex-col gap-6 lg:overflow-y-auto lg:pr-2 custom-scrollbar min-h-0 pb-4"
+            >
+              <section className="console-panel flex flex-col shrink-0">
+                <div className="console-header">
+                  <div className="flex items-center gap-2">
+                    <Video className="w-4 h-4 text-brand-primary" />
+                    <span className="label-micro">{t.videoReverseTitle}</span>
+                  </div>
+                </div>
+                
+                <div className="p-6 flex flex-col gap-8">
+                  {/* Mode Switcher */}
+                  <div className="flex bg-brand-surface border border-brand-border rounded p-1">
+                    {(["youtube", "url", "file"] as const).map(mode => (
+                      <button
+                        key={mode}
+                        onClick={() => setReverseMode(mode)}
+                        className={`flex-1 py-2 rounded text-[10px] font-bold transition-all flex items-center justify-center gap-2 ${
+                          reverseMode === mode 
+                            ? "bg-brand-border text-main shadow-sm" 
+                            : "text-muted hover:text-dim"
+                        }`}
+                      >
+                        {mode === "youtube" && <Youtube className="w-3.5 h-3.5" />}
+                        {mode === "url" && <Link className="w-3.5 h-3.5" />}
+                        {mode === "file" && <Upload className="w-3.5 h-3.5" />}
+                        {t[mode as keyof typeof t] as string}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Input Area */}
+                  <div className="space-y-4">
+                    {reverseMode === "file" ? (
+                      <div 
+                        onClick={() => videoInputRef.current?.click()}
+                        className="aspect-video rounded-xl border-2 border-dashed border-brand-border flex flex-col items-center justify-center gap-4 hover:border-brand-primary/50 hover:bg-brand-primary/5 transition-all cursor-pointer group relative overflow-hidden"
+                      >
+                        {reverseFile ? (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-brand-surface">
+                            <Video className="w-12 h-12 text-brand-primary mb-2" />
+                            <span className="text-xs font-bold text-main">视频已就绪 / Video Ready</span>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); setReverseFile(null); }}
+                              className="mt-4 px-3 py-1 bg-red-500/10 text-red-500 text-[10px] font-bold rounded hover:bg-red-500 hover:text-white transition-all"
+                            >
+                              移除 / Remove
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="w-16 h-16 bg-brand-surface rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                              <Upload className="w-8 h-8 text-muted group-hover:text-brand-primary" />
+                            </div>
+                            <div className="text-center">
+                              <p className="text-sm font-bold text-main mb-1">{t.uploadFile}</p>
+                              <p className="text-[10px] text-dim">{t.dropVideo}</p>
+                            </div>
+                          </>
+                        )}
+                        <input 
+                          type="file" 
+                          ref={videoInputRef} 
+                          onChange={handleVideoUpload} 
+                          accept="video/*" 
+                          className="hidden" 
+                        />
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <label className="label-micro">{reverseMode === "youtube" ? "YouTube URL" : "Video URL"}</label>
+                        <div className="flex items-center gap-3 bg-brand-surface border border-brand-border rounded px-4 py-3 focus-within:border-brand-primary transition-all">
+                          {reverseMode === "youtube" ? <Youtube className="w-4 h-4 text-red-500" /> : <Link className="w-4 h-4 text-brand-primary" />}
+                          <input
+                            type="text"
+                            value={reverseUrl}
+                            onChange={(e) => setReverseUrl(e.target.value)}
+                            placeholder={reverseMode === "youtube" ? t.pasteYoutube : t.pasteVideoUrl}
+                            className="flex-1 bg-transparent border-none outline-none text-sm text-main"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Language Selection for Reverse */}
+                  <div className="space-y-3">
+                    <label className="label-micro">{t.outputLanguage}</label>
+                    <div className="flex gap-2">
+                      {(["Chinese", "English"] as LanguageType[]).map(lang => (
+                        <button
+                          key={lang}
+                          onClick={() => setSelectedLanguage(lang)}
+                          className={`flex-1 py-2 px-4 rounded border text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                            selectedLanguage === lang 
+                              ? "bg-brand-primary text-black border-brand-primary" 
+                              : "bg-brand-surface text-muted border-brand-border hover:bg-brand-border/50"
+                          }`}
+                        >
+                          <Languages className="w-3 h-3" />
+                          {lang === "Chinese" ? "中文" : "English"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-6 pt-0 mt-auto">
+                  <button
+                    onClick={handleReversePrompt}
+                    disabled={isReversing || reverseSuccess}
+                    className={`w-full py-4 rounded-xl font-black text-sm tracking-widest flex items-center justify-center gap-3 transition-all shadow-lg ${
+                      isReversing || reverseSuccess
+                        ? "bg-brand-border text-muted cursor-not-allowed"
+                        : "bg-brand-primary text-black hover:scale-[1.02] active:scale-[0.98] shadow-brand-primary/20"
+                    }`}
+                  >
+                    {isReversing ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        {t.reversing}
+                      </>
+                    ) : reverseSuccess ? (
+                      <>
+                        <CheckCircle2 className="w-5 h-5 text-green-600" />
+                        {t.reverseSuccess}
+                      </>
+                    ) : (
+                      <>
+                        <ArrowRight className="w-5 h-5" />
+                        {t.reverseBtn}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </section>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Right Column: Output Panel */}
         <div ref={rightPanelRef} className="lg:col-span-7 flex flex-col gap-6 lg:overflow-y-auto lg:pr-2 custom-scrollbar min-h-0">

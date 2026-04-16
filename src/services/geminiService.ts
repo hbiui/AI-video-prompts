@@ -410,3 +410,57 @@ async function callOpenAICompatible(
     throw new Error(error.message || "API Call Error");
   }
 }
+
+export async function reverseVideoPrompt(
+  videoSource: { type: 'file' | 'url'; data: string },
+  language: LanguageType,
+  apiConfig?: { provider: string; apiKey: string; baseUrl?: string; modelName?: string }
+): Promise<string> {
+  const systemInstruction = `你是一位顶级的视频分析专家和提示词反推架构师。
+你的任务是深度分析用户提供的视频，并将其反推为高质量的视频生成提示词。
+
+### 输出要求：
+1. **结构化描述**：使用 [Shot 1], [Shot 2] 等标签清晰分隔不同的分镜。
+2. **细节丰富**：描述主体、动作、环境、灯光、构图和镜头运动。
+3. **专业术语**：使用专业的摄影和导演术语（如：Dolly In, Pan, Tilt, Low Angle, Rim Light 等）。
+4. **语言**：根据用户要求的语言（${language === "Chinese" ? "中文" : "英文"}）输出。
+5. **格式**：仅输出反推后的提示词文本，不要包含任何额外的解释或 JSON 格式。`;
+
+  try {
+    if (apiConfig?.provider === "gemini" || !apiConfig) {
+      const client = apiConfig?.apiKey ? new GoogleGenAI({ apiKey: apiConfig.apiKey }) : getAiClient();
+      const model = client.models.get({ model: apiConfig?.modelName || "gemini-1.5-pro" });
+
+      const parts: any[] = [];
+      
+      if (videoSource.type === 'file') {
+        const base64Data = videoSource.data.includes(",") ? videoSource.data.split(",")[1] : videoSource.data;
+        parts.push({
+          inlineData: {
+            mimeType: "video/mp4", // Assuming mp4 for now
+            data: base64Data,
+          },
+        });
+      } else {
+        parts.push({ text: `视频链接: ${videoSource.data}` });
+      }
+
+      parts.push({ text: `请分析这段视频并反推其生成提示词。输出语言: ${language}` });
+
+      const result = await model.generateContent({
+        contents: [{ role: "user", parts }],
+        config: {
+          systemInstruction,
+        }
+      });
+
+      return result.response.text();
+    } else {
+      // For OpenAI/Custom, we might need to send frames or just the URL if supported
+      // For now, let's focus on Gemini as it's the most capable for video
+      throw new Error("目前视频反推功能仅支持 Gemini 模型。请在设置中切换至 Gemini 服务商。");
+    }
+  } catch (error: any) {
+    throw new Error(formatApiError(error, apiConfig?.provider || "Gemini"));
+  }
+}
