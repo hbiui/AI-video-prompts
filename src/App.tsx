@@ -888,32 +888,6 @@ export default function App() {
           </p>
         </div>
         <div className="flex items-center gap-4">
-          {/* Tab Switcher */}
-          <div className="flex bg-brand-surface border border-brand-border rounded p-1">
-            <button
-              onClick={() => setActiveTab("director")}
-              className={`px-3 py-1 rounded text-[10px] font-bold transition-all flex items-center gap-1.5 ${
-                activeTab === "director" 
-                  ? "bg-brand-primary text-black shadow-sm" 
-                  : "text-muted hover:text-main"
-              }`}
-            >
-              <Cpu className="w-3 h-3" />
-              {t.directorTab}
-            </button>
-            <button
-              onClick={() => setActiveTab("reverse")}
-              className={`px-3 py-1 rounded text-[10px] font-bold transition-all flex items-center gap-1.5 ${
-                activeTab === "reverse" 
-                  ? "bg-brand-primary text-black shadow-sm" 
-                  : "text-muted hover:text-main"
-              }`}
-            >
-              <Video className="w-3 h-3" />
-              {t.reverseTab}
-            </button>
-          </div>
-
           <button 
             onClick={() => setShowTemplates(!showTemplates)}
             className={`flex items-center gap-2 px-3 py-1.5 rounded border transition-colors text-[10px] font-bold ${
@@ -1472,17 +1446,44 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        <AnimatePresence mode="wait">
-          {activeTab === "director" ? (
-            <motion.div 
-              key="director-panel"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              ref={leftPanelRef} 
-              className="lg:col-span-5 flex flex-col gap-6 lg:overflow-y-auto lg:pr-2 custom-scrollbar min-h-0 pb-4"
+        <div className="lg:col-span-5 flex flex-col gap-4 min-h-0">
+          {/* Tab Switcher */}
+          <div className="flex bg-brand-surface border border-brand-border rounded p-1 self-start">
+            <button
+              onClick={() => setActiveTab("director")}
+              className={`px-4 py-1.5 rounded text-[10px] font-bold transition-all flex items-center gap-2 ${
+                activeTab === "director" 
+                  ? "bg-brand-primary text-black shadow-sm" 
+                  : "text-muted hover:text-main"
+              }`}
             >
-          <section className="console-panel flex flex-col shrink-0">
+              <Cpu className="w-3.5 h-3.5" />
+              {t.directorTab}
+            </button>
+            <button
+              onClick={() => setActiveTab("reverse")}
+              className={`px-4 py-1.5 rounded text-[10px] font-bold transition-all flex items-center gap-2 ${
+                activeTab === "reverse" 
+                  ? "bg-brand-primary text-black shadow-sm" 
+                  : "text-muted hover:text-main"
+              }`}
+            >
+              <Video className="w-3.5 h-3.5" />
+              {t.reverseTab}
+            </button>
+          </div>
+
+          <AnimatePresence mode="wait">
+            {activeTab === "director" ? (
+              <motion.div 
+                key="director-panel"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                ref={leftPanelRef} 
+                className="flex flex-col gap-6 lg:overflow-y-auto lg:pr-2 custom-scrollbar min-h-0 pb-4"
+              >
+            <section className="console-panel flex flex-col shrink-0">
             <div className="console-header">
               <div className="flex items-center gap-2">
                 <Cpu className="w-4 h-4 text-brand-primary" />
@@ -1834,7 +1835,7 @@ export default function App() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="lg:col-span-5 flex flex-col gap-6 lg:overflow-y-auto lg:pr-2 custom-scrollbar min-h-0 pb-4"
+              className="flex flex-col gap-6 lg:overflow-y-auto lg:pr-2 custom-scrollbar min-h-0 pb-4"
             >
               <section className="console-panel flex flex-col shrink-0">
                 <div className="console-header">
@@ -1973,6 +1974,7 @@ export default function App() {
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
 
         {/* Right Column: Output Panel */}
         <div ref={rightPanelRef} className="lg:col-span-7 flex flex-col gap-6 lg:overflow-y-auto lg:pr-2 custom-scrollbar min-h-0">
