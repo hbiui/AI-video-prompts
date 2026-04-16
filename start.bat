@@ -1,60 +1,63 @@
 @echo off
+:: Set code page to UTF-8 to support potential special characters, 
+:: though we use English here to ensure maximum compatibility across different Windows locales.
+chcp 65001 >nul
 setlocal enabledelayedexpansion
-title AI Director - 一键启动脚本
+title AI Director - Startup Script
 
 echo ==========================================
-echo    AI Director - 环境检查与启动
+echo    AI Director - Environment Check
 echo ==========================================
 echo.
 
 set NEED_INSTALL=0
 
-:: 1. 检查 node_modules 文件夹是否存在
+:: 1. Check if node_modules folder exists
 if not exist node_modules (
-    echo [!] 检测到尚未安装依赖环境 (node_modules 未找到)。
+    echo [!] node_modules folder not found.
     set NEED_INSTALL=1
 ) else (
-    echo [*] 正在检查依赖完整性...
-    :: 2. 使用 npm list 检查是否有缺失或错误的依赖
+    echo [*] Checking dependency integrity...
+    :: Check if dependencies are missing or outdated
     call npm list --depth=0 >nul 2>&1
     if !errorlevel! neq 0 (
-        echo [!] 检测到依赖环境不全或版本不匹配。
+        echo [!] Dependencies are missing or need update.
         set NEED_INSTALL=1
     ) else (
-        echo [OK] 依赖环境检查通过。
+        echo [OK] Dependencies are healthy.
     )
 )
 
-:: 3. 如果需要安装或更新
+:: 2. Prompt for installation if needed
 if %NEED_INSTALL%==1 (
     echo.
-    set /p choice="是否现在安装/补全依赖环境? (Y/N): "
+    set /p choice="Dependencies are missing. Install now? (Y/N): "
     if /i "!choice!"=="Y" (
-        echo [*] 正在执行 npm install，请稍候...
+        echo [*] Running npm install, please wait...
         call npm install
         if !errorlevel! neq 0 (
             echo.
-            echo [X] 依赖安装失败，请检查网络或 Node.js 环境。
+            echo [X] Installation failed. Please check your network or Node.js environment.
             pause
             exit /b 1
         )
-        echo [OK] 依赖安装完成。
+        echo [OK] Installation complete.
     ) else (
-        echo [!] 已跳过安装，程序可能无法正常运行。
+        echo [!] Installation skipped. The app may fail to start.
     )
 )
 
 echo.
-echo [*] 正在启动开发服务器 (npm run dev)...
+echo [*] Starting dev server (npm run dev)...
 echo ==========================================
 echo.
 
-:: 4. 启动程序
+:: 3. Start the application
 call npm run dev
 
 if !errorlevel! neq 0 (
     echo.
-    echo [X] 程序异常退出。
+    echo [X] Application exited with an error.
 )
 
 pause
