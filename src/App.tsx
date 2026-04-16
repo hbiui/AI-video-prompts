@@ -1057,13 +1057,36 @@ export default function App() {
                         value={apiConfig.modelName}
                         onChange={(e) => setApiConfig({...apiConfig, modelName: e.target.value})}
                         placeholder={
-                          apiConfig.provider === "gemini" ? "gemini-1.5-pro" :
+                          apiConfig.provider === "gemini" ? "gemini-3.1-pro-preview" :
                           apiConfig.provider === "openai" ? "gpt-4o" :
                           apiConfig.provider === "doubao" ? "doubao-pro-32k" :
                           "model-name"
                         }
                         className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-sm focus:border-brand-primary outline-none transition-all"
                       />
+                      
+                      {apiConfig.provider === "gemini" && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {[
+                            { name: "3.1 Pro", id: "gemini-3.1-pro-preview" },
+                            { name: "3.1 Flash Lite", id: "gemini-3.1-flash-lite-preview" },
+                            { name: "3 Flash", id: "gemini-3-flash-preview" },
+                            { name: "3 Pro", id: "gemini-3-pro-preview" }
+                          ].map(m => (
+                            <button
+                              key={m.id}
+                              onClick={() => setApiConfig({...apiConfig, modelName: m.id})}
+                              className={`text-[9px] px-2 py-1 rounded border transition-all ${
+                                apiConfig.modelName === m.id 
+                                  ? "bg-brand-primary/20 border-brand-primary text-brand-primary" 
+                                  : "bg-brand-surface border-brand-border text-muted hover:border-brand-primary/50"
+                              }`}
+                            >
+                              {m.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                       {testStatus.message && (
                         <p className={`text-[9px] mt-1 font-medium animate-in fade-in slide-in-from-top-1 duration-200 ${testStatus.success ? 'text-green-500' : 'text-red-500'}`}>
                           {testStatus.message}

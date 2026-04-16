@@ -232,7 +232,7 @@ async function runGeminiGeneration(
   technique?: string,
   totalDuration?: number
 ): Promise<PromptResult> {
-  const modelName = customModelName || "gemini-3-flash-preview";
+  const modelName = customModelName || "gemini-3.1-pro-preview";
   
   const parts: any[] = [];
   
@@ -429,15 +429,16 @@ export async function reverseVideoPrompt(
   try {
     if (apiConfig?.provider === "gemini" || !apiConfig) {
       const client = apiConfig?.apiKey ? new GoogleGenAI({ apiKey: apiConfig.apiKey }) : getAiClient();
-      const modelName = apiConfig?.modelName || "gemini-1.5-pro";
+      const modelName = apiConfig?.modelName || "gemini-3.1-pro-preview";
 
       const parts: any[] = [];
       
       if (videoSource.type === 'file') {
+        const mimeType = videoSource.data.match(/^data:([^;]+);/)?.[1] || "video/mp4";
         const base64Data = videoSource.data.includes(",") ? videoSource.data.split(",")[1] : videoSource.data;
         parts.push({
           inlineData: {
-            mimeType: "video/mp4", // Assuming mp4 for now
+            mimeType,
             data: base64Data,
           },
         });

@@ -77,7 +77,7 @@ export const translations = {
     historyCapacityTip: "提示：增加容量会占用更多浏览器存储。建议保持在 10-20 条以获得最佳性能。",
     compressionTip: "提示：启用压缩可以显著减少浏览器存储占用，防止历史记录因空间不足而保存失败。",
     providerInfo: {
-      gemini: "Google Gemini: 强大的多模态理解能力，建议使用 Gemini 1.5 Pro。",
+      gemini: "Google Gemini: 强大的多模态理解能力，建议使用 Gemini 3.1 Pro。",
       openai: "OpenAI ChatGPT: 逻辑严密，建议使用 GPT-4o。",
       doubao: "火山引擎豆包: 字节跳动出品，中文语境理解极佳。",
       custom: "自定义 OpenAI 格式: 支持任何兼容 OpenAI 接口的第三方中转。"
@@ -108,8 +108,8 @@ export const translations = {
     videoUrl: "视频链接",
     uploadFile: "上传文件",
     pasteYoutube: "粘贴 YouTube 视频链接...",
-    pasteVideoUrl: "粘贴 MP4 视频链接...",
-    dropVideo: "拖拽视频文件至此或点击上传",
+    pasteVideoUrl: "粘贴视频链接 (MP4, WebM, MOV...)",
+    dropVideo: "拖拽视频文件至此或点击上传 (支持 MP4, WebM, MOV 等)",
     reverseBtn: "开始反推提示词",
     reversing: "正在分析视频并反推提示词...",
     reverseSuccess: "反推成功！已将结果填入导演助手。",
@@ -209,7 +209,7 @@ export const translations = {
     historyCapacityTip: "Tip: Increasing capacity uses more storage. 10-20 items recommended for best performance.",
     compressionTip: "Tip: Enabling compression significantly reduces storage usage and prevents history save failures.",
     providerInfo: {
-      gemini: "Google Gemini: Strong multimodal understanding, Gemini 1.5 Pro recommended.",
+      gemini: "Google Gemini: Strong multimodal understanding, Gemini 3.1 Pro recommended.",
       openai: "OpenAI ChatGPT: Precise logic, GPT-4o recommended.",
       doubao: "Volcengine Doubao: By ByteDance, excellent Chinese context understanding.",
       custom: "Custom OpenAI Format: Supports any OpenAI-compatible third-party proxy."
@@ -240,8 +240,8 @@ export const translations = {
     videoUrl: "Video URL",
     uploadFile: "Upload File",
     pasteYoutube: "Paste YouTube video link...",
-    pasteVideoUrl: "Paste MP4 video link...",
-    dropVideo: "Drop video file here or click to upload",
+    pasteVideoUrl: "Paste video link (MP4, WebM, MOV...)",
+    dropVideo: "Drop video file here or click to upload (Supports MP4, WebM, MOV, etc.)",
     reverseBtn: "START REVERSE PROMPT",
     reversing: "ANALYZING VIDEO & REVERSING...",
     reverseSuccess: "Reverse successful! Result filled into Director Assistant.",
