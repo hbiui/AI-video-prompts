@@ -160,6 +160,32 @@ export async function testApiConnection(config: { provider: string; apiKey: stri
         contents: "Hi"
       });
       return { success: true, message: "Gemini API 连接成功！" };
+    } else if (config.provider === "anthropic") {
+      const baseUrl = config.baseUrl || "https://api.anthropic.com/v1";
+      const endpoint = `${baseUrl}/messages`;
+      const modelToUse = config.modelName || "claude-3-haiku-20240307";
+      
+      const response = await universalFetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": config.apiKey,
+          "anthropic-version": "2023-06-01"
+        },
+        body: JSON.stringify({
+          model: modelToUse,
+          messages: [{ role: "user", content: "hi" }],
+          max_tokens: 100
+        })
+      });
+
+      if (response.ok) {
+        return { success: true, message: "Anthropic API 连接成功！" };
+      } else {
+        const data = await response.json().catch(() => ({}));
+        const errorMsg = data.error?.message || `连接失败 (状态码: ${response.status})`;
+        return { success: false, message: formatApiError(new Error(errorMsg), "Anthropic") };
+      }
     } else {
       const baseUrl = config.baseUrl || (config.provider === "openai" ? "https://api.openai.com/v1" : "");
       const endpoint = `${baseUrl}/chat/completions`;
@@ -174,7 +200,7 @@ export async function testApiConnection(config: { provider: string; apiKey: stri
         body: JSON.stringify({
           model: modelToUse,
           messages: [{ role: "user", content: "hi" }],
-          max_tokens: 5
+          max_tokens: 100
         })
       });
 
@@ -188,6 +214,96 @@ export async function testApiConnection(config: { provider: string; apiKey: stri
     }
   } catch (error: any) {
     return { success: false, message: formatApiError(error, config.provider) };
+  }
+}
+
+async function callAnthropic(
+  userInput: string,
+  model: ModelType,
+  language: LanguageType,
+  images?: ImageObject[],
+  apiConfig?: { provider: string; apiKey: string; baseUrl?: string; modelName?: string },
+  technique?: string,
+  totalDuration?: number
+): Promise<PromptResult> {
+  try {
+    const baseUrl = apiConfig?.baseUrl || "https://api.anthropic.com/v1";
+    const endpoint = `${baseUrl}/messages`;
+    
+    const imageContext = (images || []).map((img, idx) => {
+      const defaultTag = model === "Seedance 2.0" ? `@Image${idx + 1}` : `<<<image_${idx + 1}>>>`;
+      const keywordInfo = img.keyword ? ` (用户引用关键词: @${img.keyword})` : "";
+      return `参考图片 ${idx + 1}: 标签为 ${defaultTag}${keywordInfo}。`;
+    }).join("\n");
+
+    const userContent: any[] = [
+      { type: "text", text: `用户创意: "${userInput}"\n选择模型: ${model}\n输出语言: ${language}\n${technique ? `指定视频手法: ${technique}\n` : ""}${totalDuration ? `指定视频总时长: ${totalDuration}秒。请确保生成的每个分镜 [Shot N] 后都带有该镜头的时长（例如 [Shot 1] (3s)），且所有分镜时长之和等于或略小于总时长。\n` : ""}\n${imageContext}\n\n请根据以上信息生成专业的视频提示词。` }
+    ];
+
+    if (images && images.length > 0) {
+      images.forEach(img => {
+        if (img.url && typeof img.url === 'string') {
+          const match = img.url.match(/^data:(image\/[a-zA-Z]+);base64,(.+)$/);
+          if (match) {
+            userContent.push({
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: match[1],
+                data: match[2]
+              }
+            });
+          }
+        }
+      });
+    }
+
+    const modelToUse = apiConfig?.modelName || "claude-3-5-sonnet-20240620";
+
+    const response = await universalFetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiConfig?.apiKey || "",
+        "anthropic-version": "2023-06-01"
+      },
+      body: JSON.stringify({
+        model: modelToUse,
+        max_tokens: 4096,
+        system: SYSTEM_INSTRUCTION + "\n\nIMPORTANT: You MUST return ONLY a valid JSON object. Do not include any other text.",
+        messages: [
+          { role: "user", content: userContent }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      let errorMessage = "Anthropic API request failed";
+      try {
+        const err = await response.json();
+        errorMessage = err.error?.message || errorMessage;
+      } catch (e) {}
+      throw new Error(formatApiError(new Error(errorMessage), "Anthropic"));
+    }
+
+    const data = await response.json();
+    const content = data.content?.[0]?.text;
+    
+    if (!content) {
+      throw new Error("Empty response from Anthropic");
+    }
+
+    try {
+      // Anthropic sometimes adds markdown blocks even when told not to
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : content;
+      return JSON.parse(jsonStr) as PromptResult;
+    } catch (parseError) {
+      console.error("Anthropic Parse Error. Raw content:", content);
+      throw new Error("Failed to parse Anthropic response as JSON.");
+    }
+  } catch (error: any) {
+    throw new Error(error.message || "Anthropic API Call Error");
   }
 }
 
@@ -210,6 +326,9 @@ export async function generateVideoPrompt(
   if (apiConfig && apiConfig.apiKey) {
     if (apiConfig.provider === "openai" || apiConfig.provider === "doubao" || apiConfig.provider === "custom") {
       return callOpenAICompatible(userInput, model, language, normalizedImages, apiConfig, technique, totalDuration);
+    }
+    if (apiConfig.provider === "anthropic") {
+      return callAnthropic(userInput, model, language, normalizedImages, apiConfig, technique, totalDuration);
     }
     // For Gemini, we could re-initialize the client with the user's key
     if (apiConfig.provider === "gemini") {
@@ -378,6 +497,7 @@ async function callOpenAICompatible(
       body: JSON.stringify({
         model: modelToUse,
         messages,
+        max_tokens: 4096,
         response_format: { type: "json_object" }
       })
     });

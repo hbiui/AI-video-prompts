@@ -80,6 +80,7 @@ export const translations = {
       gemini: "Google Gemini: 强大的多模态理解能力，建议使用 Gemini 3.1 Pro。",
       openai: "OpenAI ChatGPT: 逻辑严密，建议使用 GPT-4o。",
       doubao: "火山引擎豆包: 字节跳动出品，中文语境理解极佳。",
+      anthropic: "Anthropic Claude: 逻辑极其严密，长文本理解能力顶尖。",
       custom: "自定义 OpenAI 格式: 支持任何兼容 OpenAI 接口的第三方中转。"
     },
     applyLink: "申请链接",
@@ -212,6 +213,7 @@ export const translations = {
       gemini: "Google Gemini: Strong multimodal understanding, Gemini 3.1 Pro recommended.",
       openai: "OpenAI ChatGPT: Precise logic, GPT-4o recommended.",
       doubao: "Volcengine Doubao: By ByteDance, excellent Chinese context understanding.",
+      anthropic: "Anthropic Claude: Extremely precise logic, top-tier long context understanding.",
       custom: "Custom OpenAI Format: Supports any OpenAI-compatible third-party proxy."
     },
     applyLink: "Apply Link",

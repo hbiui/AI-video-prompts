@@ -54,7 +54,7 @@ import {
 import { translations, Language, PROMPT_TEMPLATES, PromptTemplate } from "./constants";
 
 interface ApiConfig {
-  provider: "gemini" | "openai" | "doubao" | "custom";
+  provider: "gemini" | "openai" | "doubao" | "anthropic" | "custom";
   apiKey: string;
   baseUrl?: string;
   modelName?: string;
@@ -990,6 +990,7 @@ export default function App() {
                         <option value="gemini">Google Gemini</option>
                         <option value="openai">OpenAI ChatGPT</option>
                         <option value="doubao">火山引擎豆包 (Doubao)</option>
+                        <option value="anthropic">Anthropic Claude</option>
                         <option value="custom">Custom (OpenAI Format)</option>
                       </select>
                     </div>
@@ -1059,7 +1060,8 @@ export default function App() {
                         placeholder={
                           apiConfig.provider === "gemini" ? "gemini-3.1-pro-preview" :
                           apiConfig.provider === "openai" ? "gpt-4o" :
-                          apiConfig.provider === "doubao" ? "doubao-pro-32k" :
+                          apiConfig.provider === "doubao" ? "Doubao-pro-32k" :
+                          apiConfig.provider === "anthropic" ? "claude-3-5-sonnet-20240620" :
                           "model-name"
                         }
                         className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-sm focus:border-brand-primary outline-none transition-all"
@@ -1075,6 +1077,82 @@ export default function App() {
                           ].map(m => (
                             <button
                               key={m.id}
+                              type="button"
+                              onClick={() => setApiConfig({...apiConfig, modelName: m.id})}
+                              className={`text-[9px] px-2 py-1 rounded border transition-all ${
+                                apiConfig.modelName === m.id 
+                                  ? "bg-brand-primary/20 border-brand-primary text-brand-primary" 
+                                  : "bg-brand-surface border-brand-border text-muted hover:border-brand-primary/50"
+                              }`}
+                            >
+                              {m.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {apiConfig.provider === "openai" && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {[
+                            { name: "GPT-4o", id: "gpt-4o" },
+                            { name: "GPT-4o Mini", id: "gpt-4o-mini" },
+                            { name: "o1 Preview", id: "o1-preview" },
+                            { name: "o1 Mini", id: "o1-mini" },
+                            { name: "GPT-4 Turbo", id: "gpt-4-turbo" }
+                          ].map(m => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => setApiConfig({...apiConfig, modelName: m.id})}
+                              className={`text-[9px] px-2 py-1 rounded border transition-all ${
+                                apiConfig.modelName === m.id 
+                                  ? "bg-brand-primary/20 border-brand-primary text-brand-primary" 
+                                  : "bg-brand-surface border-brand-border text-muted hover:border-brand-primary/50"
+                              }`}
+                            >
+                              {m.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {apiConfig.provider === "anthropic" && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {[
+                            { name: "Claude 3.5 Sonnet", id: "claude-3-5-sonnet-20240620" },
+                            { name: "Claude 3.5 Haiku", id: "claude-3-5-haiku-20241022" },
+                            { name: "Claude 3 Opus", id: "claude-3-opus-20240229" },
+                            { name: "Claude 3 Sonnet", id: "claude-3-sonnet-20240229" },
+                            { name: "Claude 3 Haiku", id: "claude-3-haiku-20240307" }
+                          ].map(m => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => setApiConfig({...apiConfig, modelName: m.id})}
+                              className={`text-[9px] px-2 py-1 rounded border transition-all ${
+                                apiConfig.modelName === m.id 
+                                  ? "bg-brand-primary/20 border-brand-primary text-brand-primary" 
+                                  : "bg-brand-surface border-brand-border text-muted hover:border-brand-primary/50"
+                              }`}
+                            >
+                              {m.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {apiConfig.provider === "doubao" && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {[
+                            { name: "Pro 128k", id: "Doubao-pro-128k" },
+                            { name: "Pro 32k", id: "Doubao-pro-32k" },
+                            { name: "Lite 128k", id: "Doubao-lite-128k" },
+                            { name: "Vision Pro", id: "Doubao-vision-pro" },
+                            { name: "Seed 2.0 Pro", id: "Doubao-Seed-2.0-pro" },
+                            { name: "Seed 2.0 Lite", id: "Doubao-Seed-2.0-lite" }
+                          ].map(m => (
+                            <button
+                              key={m.id}
+                              type="button"
                               onClick={() => setApiConfig({...apiConfig, modelName: m.id})}
                               className={`text-[9px] px-2 py-1 rounded border transition-all ${
                                 apiConfig.modelName === m.id 
