@@ -16,11 +16,12 @@ function getAiClient() {
       console.warn("GEMINI_API_KEY is not defined. Please check your .env file.");
     }
 
-    // Standard fetch for Gemini
-    const requestOptions: any = {
-      customFetch: universalFetch
-    };
-    
+    // Custom fetch for Gemini in Electron
+    const requestOptions: any = {};
+    if (typeof window !== 'undefined' && (window as any).ipcRenderer) {
+      requestOptions.customFetch = universalFetch;
+    }
+
     _ai = new GoogleGenAI({ 
       apiKey: apiKey || "dummy_key",
       ...requestOptions
@@ -93,9 +94,9 @@ export interface ImageObject {
   keyword?: string;
 }
 
-// Helper for cross-platform fetch (handles CORS in web app via local proxy and Electron via IPC)
+// Helper for cross-platform fetch (handles CORS in Electron)
 async function universalFetch(url: string, options: any) {
-  // 1. Check if running in Electron and proxy is available
+  // Check if running in Electron and proxy is available
   if (typeof window !== 'undefined' && (window as any).ipcRenderer) {
     try {
       const result = await (window as any).ipcRenderer.invoke('fetch-proxy', { url, options });
@@ -112,35 +113,7 @@ async function universalFetch(url: string, options: any) {
       console.error("Electron fetch proxy failed, falling back to standard fetch", e);
     }
   }
-
-  // 2. If it's already a local request, don't proxy
-  if (url.startsWith('/') || url.startsWith('http://localhost') || url.startsWith('http://0.0.0.0')) {
-    return fetch(url, options);
-  }
-
-  // 3. Use Web Proxy for standard web environment
-  try {
-    const proxyResponse = await fetch('/api/proxy', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ url, options }),
-    });
-
-    const data = await proxyResponse.text();
-    
-    return {
-      ok: proxyResponse.ok,
-      status: proxyResponse.status,
-      json: async () => JSON.parse(data),
-      text: async () => data,
-      headers: proxyResponse.headers
-    } as any;
-  } catch (e) {
-    console.error("Proxy fetch failed, falling back to standard fetch", e);
-    return fetch(url, options);
-  }
+  return fetch(url, options);
 }
 
 // Helper to format API errors into user-friendly messages
@@ -185,12 +158,13 @@ function formatApiError(error: any, provider: string): string {
 export async function testApiConnection(config: { provider: string; apiKey: string; baseUrl?: string; modelName?: string }): Promise<{ success: boolean; message: string }> {
   try {
     if (config.provider === "gemini") {
-      const requestOptions: any = {
-        customFetch: universalFetch
-      };
+      const requestOptions: any = {};
+      if (typeof window !== 'undefined' && (window as any).ipcRenderer) {
+        requestOptions.customFetch = universalFetch;
+      }
       const client = new GoogleGenAI({ apiKey: config.apiKey, ...requestOptions });
       await client.models.generateContent({
-        model: config.modelName || "gemini-3-flash-preview",
+        model: config.modelName || "gemini-1.5-flash",
         contents: "Hi"
       });
       return { success: true, message: "Gemini API 连接成功！" };
@@ -582,10 +556,7 @@ export async function reverseVideoPrompt(
 
   try {
     if (apiConfig?.provider === "gemini" || !apiConfig) {
-      const requestOptions: any = {
-        customFetch: universalFetch
-      };
-      const client = apiConfig?.apiKey ? new GoogleGenAI({ apiKey: apiConfig.apiKey, ...requestOptions }) : getAiClient();
+      const client = apiConfig?.apiKey ? new GoogleGenAI({ apiKey: apiConfig.apiKey }) : getAiClient();
       const modelName = apiConfig?.modelName || "gemini-3.1-pro-preview";
 
       const parts: any[] = [];

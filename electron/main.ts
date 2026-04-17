@@ -1,62 +1,98 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-process.env.APP_ROOT = path.join(__dirname, '..')
+// The built directory structure
+//
+// ├─┬─┬ dist
+// │ │ └── index.html
+// │ └── dist-electron
+// │   └── main.js
+//
 
-export const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
-export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron')
-export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
+process.env.DIST = path.join(__dirname, '../dist')
+process.env.VITE_PUBLIC = app.isPackaged ? process.env.DIST : path.join(process.env.DIST, '../public')
 
-process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST
 
-let win: BrowserWindow | null = null
+let win: BrowserWindow | null
 
 function createWindow() {
   win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
-      contextIsolation: true,
       nodeIntegration: false,
+      contextIsolation: true,
+      webSecurity: true, // Keep security on, use IPC for proxy
     },
     width: 1200,
     height: 800,
+    title: 'AI Video Prompt Director',
   })
 
-  // Test active push message to Renderer-process.
-  win.webContents.on('did-finish-load', () => {
-    win?.webContents.send('main-process-message', (new Date).toLocaleString())
+  win.setMenu(null)
+
+  // Intercept navigation to open external links in default browser
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http')) {
+      shell.openExternal(url)
+      return { action: 'deny' }
+    }
+    return { action: 'allow' }
   })
 
-  if (VITE_DEV_SERVER_URL) {
-    win.loadURL(VITE_DEV_SERVER_URL)
+  // Also handle direct navigation attempts (like <a> tags without target="_blank")
+  win.webContents.on('will-navigate', (event, url) => {
+    if (url.startsWith('http') && !url.includes('localhost') && !url.includes('127.0.0.1')) {
+      event.preventDefault()
+      shell.openExternal(url)
+    }
+  })
+
+  // Open devtools in development
+  if (!app.isPackaged) {
+    win.webContents.openDevTools()
+  }
+
+  win.webContents.on('did-fail-load', () => {
+    console.error('Failed to load window')
+    win?.loadFile(path.join(process.env.DIST, 'index.html'))
+  })
+
+  if (process.env.VITE_DEV_SERVER_URL) {
+    win.loadURL(process.env.VITE_DEV_SERVER_URL)
   } else {
-    win.loadFile(path.join(RENDERER_DIST, 'index.html'))
+    win.loadFile(path.join(process.env.DIST, 'index.html'))
   }
 }
 
-// IPC Fetch Proxy for Electron (to bypass CORS)
+// IPC Proxy for Fetch to bypass CORS
 ipcMain.handle('fetch-proxy', async (_event, { url, options }) => {
   try {
     const response = await fetch(url, options);
+    const status = response.status;
+    const statusText = response.statusText;
+    const headers = Object.fromEntries(response.headers.entries());
     const data = await response.text();
+    
     return {
       ok: response.ok,
-      status: response.status,
-      data: data
+      status,
+      statusText,
+      headers,
+      data
     };
   } catch (error: any) {
     return {
       ok: false,
-      status: 500,
-      error: error.message
+      error: error.message || 'Network request failed'
     };
   }
 });
 
+// Quit when all windows are closed, except on macOS.
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
