@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import logoImg from "./ico.png";
 import { 
   Video, 
   Image as ImageIcon, 
@@ -39,7 +40,16 @@ import {
   ArrowRight,
   CheckCircle2,
   ChevronDown,
-  Loader2
+  Loader2,
+  Share2,
+  Download,
+  Pencil,
+  Shapes,
+  Palette,
+  Camera,
+  Factory,
+  Landmark,
+  Circle
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -51,7 +61,7 @@ import {
   ImageObject,
   testApiConnection
 } from "./services/geminiService";
-import { translations, Language, PROMPT_TEMPLATES, PromptTemplate } from "./constants";
+import { translations, Language, PROMPT_TEMPLATES, PromptTemplate, VISUAL_STYLES } from "./constants";
 
 interface ApiConfig {
   provider: "gemini" | "openai" | "doubao" | "anthropic" | "custom";
@@ -74,6 +84,7 @@ interface HistoryItem {
   model: ModelType;
   language: LanguageType;
   technique?: string;
+  visualStyle?: string;
   totalDuration?: number;
   images: ImageObject[];
   result: PromptResult;
@@ -93,14 +104,23 @@ export default function App() {
   const [isReversing, setIsReversing] = useState(false);
   const [reverseSuccess, setReverseSuccess] = useState(false);
   const [selectedTechnique, setSelectedTechnique] = useState<string>("");
+  const [selectedVisualStyle, setSelectedVisualStyle] = useState<string>("");
   const [isDurationEnabled, setIsDurationEnabled] = useState(false);
   const [totalDuration, setTotalDuration] = useState<string>("");
+  const [isShotCountEnabled, setIsShotCountEnabled] = useState(false);
+  const [manualShotCount, setManualShotCount] = useState<string>("3");
   const [showTechniqueDropdown, setShowTechniqueDropdown] = useState(false);
+  const [showVisualStyleDropdown, setShowVisualStyleDropdown] = useState(false);
+  const [activeVisualStyleCategory, setActiveVisualStyleCategory] = useState<string | null>(null);
+  const [hoveredStyleDesc, setHoveredStyleDesc] = useState<{ zh: string; en: string } | null>(null);
   const [images, setImages] = useState<ImageObject[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<PromptResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const [shareStatus, setShareStatus] = useState<"idle" | "success">("idle");
+  const [downloadStatus, setDownloadStatus] = useState<"idle" | "success">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [reverseError, setReverseError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [userTemplates, setUserTemplates] = useState<PromptTemplate[]>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -122,10 +142,13 @@ export default function App() {
   });
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
+  const [newTemplateCategory, setNewTemplateCategory] = useState<string>("cinematic");
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [mentionMenu, setMentionMenu] = useState<{ show: boolean; x: number; y: number; index: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [generationStage, setGenerationStage] = useState(0);
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const [logoError, setLogoError] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [showApiKeyWarning, setShowApiKeyWarning] = useState(false);
@@ -147,6 +170,14 @@ export default function App() {
     { id: "matchCut", icon: Scissors },
     { id: "fadeTransition", icon: ArrowLeftRight },
   ];
+
+  const visualStyleCategoryIcons: Record<string, any> = {
+    animation: Shapes,
+    artistic: Palette,
+    realistic: Camera,
+    industrial: Factory,
+    saudi: Landmark
+  };
 
   const videoInputRef = useRef<HTMLInputElement>(null);
 
@@ -296,6 +327,29 @@ export default function App() {
         }
       }
     };
+
+    // Handle shared prompt from URL
+    const hash = window.location.hash;
+    if (hash.startsWith("#prompt=")) {
+      try {
+        const encoded = hash.split("#prompt=")[1];
+        const json = decodeURIComponent(escape(atob(encoded)));
+        const data = JSON.parse(json);
+        if (data.mainPrompt) {
+          setResult(data);
+          // Small delay to ensure render
+          setTimeout(() => {
+            if (rightPanelRef.current) {
+              rightPanelRef.current.scrollIntoView({ behavior: 'smooth' });
+            }
+          }, 500);
+          // Clear hash to prevent reloading it every time
+          window.history.replaceState(null, "", window.location.pathname);
+        }
+      } catch (e) {
+        console.error("Failed to parse shared prompt", e);
+      }
+    }
     
     // Delay check to ensure UI is ready and doesn't clash with other loads
     const warningTimer = setTimeout(checkApiKey, 2000);
@@ -463,16 +517,34 @@ export default function App() {
   const handleSaveTemplate = () => {
     if (!userInput || !newTemplateName) return;
 
-    const newTpl: PromptTemplate = {
-      id: Math.random().toString(36).substring(7),
-      category: "cinematic", // Default category for user templates
-      title: { zh: newTemplateName, en: newTemplateName },
-      concept: userInput
-    };
+    if (editingTemplateId) {
+      setUserTemplates(prev => prev.map(t => 
+        t.id === editingTemplateId 
+          ? { ...t, title: { zh: newTemplateName, en: newTemplateName }, category: newTemplateCategory as any } 
+          : t
+      ));
+    } else {
+      const newTpl: PromptTemplate = {
+        id: Math.random().toString(36).substring(7),
+        category: newTemplateCategory as any,
+        title: { zh: newTemplateName, en: newTemplateName },
+        concept: userInput
+      };
+      setUserTemplates(prev => [newTpl, ...prev]);
+    }
 
-    setUserTemplates(prev => [newTpl, ...prev]);
     setNewTemplateName("");
+    setEditingTemplateId(null);
+    setNewTemplateCategory("cinematic");
     setShowSaveTemplateModal(false);
+  };
+
+  const openEditTemplateModal = (tpl: PromptTemplate, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setNewTemplateName(tpl.title[uiLang] || tpl.title.zh);
+    setNewTemplateCategory(tpl.category);
+    setEditingTemplateId(tpl.id);
+    setShowSaveTemplateModal(true);
   };
 
   const deleteUserTemplate = (id: string, e: React.MouseEvent) => {
@@ -694,16 +766,16 @@ export default function App() {
 
   const handleReversePrompt = async () => {
     if (reverseMode === "file" && !reverseFile) {
-      setError(t.dropVideo);
+      setReverseError(t.dropVideo);
       return;
     }
     if ((reverseMode === "youtube" || reverseMode === "url") && !reverseUrl) {
-      setError(reverseMode === "youtube" ? t.pasteYoutube : t.pasteVideoUrl);
+      setReverseError(reverseMode === "youtube" ? t.pasteYoutube : t.pasteVideoUrl);
       return;
     }
 
     setIsReversing(true);
-    setError(null);
+    setReverseError(null);
     setReverseSuccess(false);
 
     try {
@@ -720,7 +792,7 @@ export default function App() {
         setReverseSuccess(false);
       }, 2000);
     } catch (err: any) {
-      setError(err.message || t.errorFailed);
+      setReverseError(err.message || t.errorFailed);
     } finally {
       setIsReversing(false);
     }
@@ -760,7 +832,9 @@ export default function App() {
         images, 
         apiConfig.apiKey ? apiConfig : undefined,
         selectedTechnique ? t.techniques[selectedTechnique as keyof typeof t.techniques] : undefined,
-        isDurationEnabled && totalDuration ? parseInt(totalDuration) : undefined
+        isDurationEnabled && totalDuration ? parseInt(totalDuration, 10) : undefined,
+        isShotCountEnabled && manualShotCount ? parseInt(manualShotCount, 10) : undefined,
+        selectedVisualStyle || undefined
       );
       setResult(res);
       
@@ -772,13 +846,14 @@ export default function App() {
         model: selectedModel,
         language: selectedLanguage,
         technique: selectedTechnique,
+        visualStyle: selectedVisualStyle,
         totalDuration: isDurationEnabled && totalDuration ? parseInt(totalDuration) : undefined,
         images: [...images],
         result: res
       };
       setHistory(prev => [newItem, ...prev].slice(0, compressionConfig.historyCapacity));
-    } catch (err) {
-      setError(t.errorFailed);
+    } catch (err: any) {
+      setError(err.message || t.errorFailed);
       console.error(err);
     } finally {
       setIsGenerating(false);
@@ -813,6 +888,65 @@ export default function App() {
       });
   };
 
+  const handleShare = (targetResult?: PromptResult) => {
+    const dataToShare = targetResult || result;
+    if (!dataToShare) return;
+    try {
+      const data = {
+        mainPrompt: dataToShare.mainPrompt,
+        translation: dataToShare.translation,
+        parameters: dataToShare.parameters,
+        suggestions: dataToShare.suggestions
+      };
+      const json = JSON.stringify(data);
+      const encoded = btoa(unescape(encodeURIComponent(json)));
+      const url = `${window.location.origin}${window.location.pathname}#prompt=${encoded}`;
+      
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => {
+          setShareStatus("success");
+          setTimeout(() => setShareStatus("idle"), 3000);
+        });
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = url;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        setShareStatus("success");
+        setTimeout(() => setShareStatus("idle"), 3000);
+      }
+    } catch (e) {
+      console.error("Failed to generate share URL", e);
+    }
+  };
+
+  const handleDownload = () => {
+    if (!result) return;
+    const model = result.parameters.model;
+    const content = `[${model} AI Video Prompt]\n\n` + 
+                    `### Main Prompt (${result.parameters.language}):\n${result.mainPrompt}\n\n` +
+                    `### Translation / Reference:\n${result.translation}\n\n` +
+                    `### Video Parameters:\n` +
+                    `- Model: ${result.parameters.model}\n` +
+                    `- Duration: ${result.parameters.duration}\n` +
+                    `${result.parameters.motionIntensity ? `- Motion Intensity: ${result.parameters.motionIntensity}\n` : ''}` +
+                    `- Shots: ${result.parameters.shotCount}\n\n` +
+                    `--- Generated by AI Video Prompt Director ---`;
+    
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `video_prompt_${Date.now()}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+    
+    setDownloadStatus("success");
+    setTimeout(() => setDownloadStatus("idle"), 3000);
+  };
+
   const toggleUiLang = () => {
     setUiLang(prev => prev === "zh" ? "en" : "zh");
   };
@@ -834,6 +968,7 @@ export default function App() {
     setSelectedModel(item.model);
     setSelectedLanguage(item.language);
     setSelectedTechnique(item.technique || "");
+    setSelectedVisualStyle(item.visualStyle || "");
     setIsDurationEnabled(!!item.totalDuration);
     setTotalDuration(item.totalDuration ? item.totalDuration.toString() : "");
     // Ensure images are objects and have IDs
@@ -872,7 +1007,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen lg:h-[calc(100vh+100px)] lg:overflow-hidden flex flex-col p-4 md:p-8 max-w-7xl mx-auto gap-8">
+    <div className="min-h-screen flex flex-col p-4 md:p-8 max-w-7xl mx-auto gap-8">
       {/* Mention Menu */}
       <AnimatePresence>
         {mentionMenu && mentionMenu.show && (
@@ -927,10 +1062,22 @@ export default function App() {
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 bg-brand-primary rounded-sm flex items-center justify-center">
-              <Video className="text-black w-5 h-5" />
-            </div>
+          <div className="flex items-center gap-3 mb-2">
+            {logoError ? (
+              <div className="w-11 h-11 bg-brand-primary rounded-xl flex items-center justify-center shadow-lg border border-brand-border/20">
+                <Video className="text-black w-6 h-6" />
+              </div>
+            ) : (
+              <img 
+                src={logoImg} 
+                className="w-11 h-11 rounded-xl shadow-lg border border-brand-border/10 object-cover" 
+                alt="Logo"
+                onError={() => {
+                  console.warn("Local logo failed to load, using fallback icon.");
+                  setLogoError(true);
+                }}
+              />
+            )}
             <h1 className="text-2xl font-bold tracking-tighter uppercase italic">{t.title}</h1>
             <button 
               onClick={() => setIsDarkMode(!isDarkMode)}
@@ -988,7 +1135,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 relative lg:overflow-hidden min-h-0">
+      <main className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 relative">
         {/* Settings Drawer Overlay */}
         <AnimatePresence>
           {showSettings && (
@@ -1364,19 +1511,32 @@ export default function App() {
                               onClick={() => useTemplate(tpl)}
                               className="w-full bg-brand-primary/5 border border-brand-primary/20 rounded-lg p-4 hover:border-brand-primary transition-all text-left overflow-hidden"
                             >
-                              <h4 className="text-xs font-bold text-brand-text mb-2">
-                                {tpl.title.zh}
-                              </h4>
+                              <div className="flex items-center justify-between mb-2">
+                                <h4 className="text-xs font-bold text-brand-text">
+                                  {tpl.title.zh}
+                                </h4>
+                                <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-brand-primary/10 text-brand-primary border border-brand-primary/20">
+                                  {t.templateCategories[tpl.category as keyof typeof t.templateCategories]}
+                                </span>
+                              </div>
                               <p className="text-[10px] text-muted line-clamp-2 italic">
                                 {tpl.concept}
                               </p>
                             </button>
-                            <button 
-                              onClick={(e) => deleteUserTemplate(tpl.id, e)}
-                              className="absolute top-2 right-2 p-1.5 text-dim hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button 
+                                onClick={(e) => openEditTemplateModal(tpl, e)}
+                                className="p-1.5 text-dim hover:text-brand-primary transition-colors"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button 
+                                onClick={(e) => deleteUserTemplate(tpl.id, e)}
+                                className="p-1.5 text-dim hover:text-red-500 transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1497,6 +1657,13 @@ export default function App() {
                             <Sparkles className="w-2.5 h-2.5" />
                             {t.importPrompt}
                           </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleShare(item.result); }}
+                            className="flex items-center gap-1 text-[9px] font-bold text-muted hover:text-brand-text px-2 py-1 rounded border border-brand-border transition-all"
+                            title={t.sharePrompt}
+                          >
+                            <Share2 className="w-2.5 h-2.5" />
+                          </button>
                         </div>
                         <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <ExternalLink className="w-3 h-3 text-brand-primary" />
@@ -1510,11 +1677,11 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        <div className="lg:col-span-5 flex flex-col gap-4 min-h-0">
+        <div className="lg:col-span-5 flex flex-col gap-4 relative z-20">
           {/* Tab Switcher */}
           <div className="flex bg-brand-surface border border-brand-border rounded p-1 self-start">
             <button
-              onClick={() => { setActiveTab("director"); setError(null); }}
+              onClick={() => { setActiveTab("director"); setError(null); setReverseError(null); }}
               className={`px-4 py-1.5 rounded text-[10px] font-bold transition-all flex items-center gap-2 ${
                 activeTab === "director" 
                   ? "bg-brand-primary text-black shadow-sm" 
@@ -1525,7 +1692,7 @@ export default function App() {
               {t.directorTab}
             </button>
             <button
-              onClick={() => { setActiveTab("reverse"); setError(null); }}
+              onClick={() => { setActiveTab("reverse"); setError(null); setReverseError(null); }}
               className={`px-4 py-1.5 rounded text-[10px] font-bold transition-all flex items-center gap-2 ${
                 activeTab === "reverse" 
                   ? "bg-brand-primary text-black shadow-sm" 
@@ -1545,7 +1712,7 @@ export default function App() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 ref={leftPanelRef} 
-                className="flex flex-col gap-6 lg:overflow-y-auto lg:pr-2 custom-scrollbar min-h-0 pb-4"
+                className="flex flex-col gap-6 pb-4"
               >
             <section className="console-panel flex flex-col shrink-0">
             <div className="console-header">
@@ -1679,6 +1846,168 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Visual Style Selection */}
+              <div className="space-y-3 relative">
+                <div className="flex items-center gap-2">
+                  <label className="label-micro">{t.visualStyle}</label>
+                  <span className="text-[10px] text-dim font-mono">{t.optional}</span>
+                </div>
+                
+                <div className="relative">
+                  <button
+                    onClick={() => setShowVisualStyleDropdown(!showVisualStyleDropdown)}
+                    className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3 flex items-center justify-between hover:border-brand-primary/50 transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      {selectedVisualStyle ? (
+                        <>
+                          <Sparkles className="w-4 h-4 text-brand-primary" />
+                          <span className="text-sm font-bold text-main">
+                            {(() => {
+                              for (const cat of Object.values(VISUAL_STYLES)) {
+                                const style = cat.styles.find(s => s.name.zh === selectedVisualStyle || s.name.en === selectedVisualStyle);
+                                if (style) return style.name[uiLang];
+                              }
+                              return selectedVisualStyle;
+                            })()}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-sm text-dim">{t.selectStyle}</span>
+                      )}
+                    </div>
+                    <ChevronDown className={`w-4 h-4 text-muted group-hover:text-brand-primary transition-transform ${showVisualStyleDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  <AnimatePresence>
+                    {showVisualStyleDropdown && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-[60]" 
+                          onClick={() => {
+                            setShowVisualStyleDropdown(false);
+                            setActiveVisualStyleCategory(null);
+                            setHoveredStyleDesc(null);
+                          }}
+                        />
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          className="absolute top-full left-0 mt-2 bg-brand-surface border border-brand-border rounded-xl shadow-2xl z-[70] flex flex-col h-[400px] w-max overflow-hidden"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex flex-1 min-h-0">
+                            {/* Category Sidebar */}
+                            <div className="w-[170px] border-r border-brand-border py-2 bg-brand-primary/[0.02] flex flex-col overflow-y-auto custom-scrollbar">
+                              <button
+                                  onClick={() => {
+                                    setSelectedVisualStyle("");
+                                    setShowVisualStyleDropdown(false);
+                                    setActiveVisualStyleCategory(null);
+                                  }}
+                                  className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-brand-primary/10 transition-colors text-left"
+                                >
+                                  <Circle className="w-4 h-4 text-muted" />
+                                  <span className="text-xs font-bold text-dim">{t.clearAll}</span>
+                                </button>
+                                <div className="h-[1px] bg-brand-border mx-2 my-1" />
+                                {Object.entries(VISUAL_STYLES).map(([key, cat]) => {
+                                  const Icon = visualStyleCategoryIcons[key as keyof typeof visualStyleCategoryIcons] || Shapes;
+                                  return (
+                                    <button
+                                      key={key}
+                                      onMouseEnter={() => setActiveVisualStyleCategory(key)}
+                                      className={`w-full px-4 py-3 flex items-center gap-3 transition-colors text-left group ${
+                                        activeVisualStyleCategory === key ? 'bg-brand-primary/20 text-brand-primary' : 'hover:bg-brand-primary/10 text-main'
+                                      }`}
+                                    >
+                                      <Icon className={`w-4 h-4 ${activeVisualStyleCategory === key ? 'text-brand-primary' : 'text-muted'}`} />
+                                      <span className="text-xs font-bold">{cat.label[uiLang]}</span>
+                                    </button>
+                                  );
+                                })}
+                            </div>
+
+                            {/* Styles Panel */}
+                            <div className="w-[210px] overflow-y-auto py-2 bg-black/[0.01] custom-scrollbar">
+                              {activeVisualStyleCategory ? (
+                                <div className="grid grid-cols-1 gap-1 px-2">
+                                  {VISUAL_STYLES[activeVisualStyleCategory as keyof typeof VISUAL_STYLES].styles.map((style) => (
+                                    <div key={style.name.zh} className="relative group/item">
+                                      <button
+                                        onMouseEnter={() => setHoveredStyleDesc(style.description)}
+                                        onMouseLeave={() => setHoveredStyleDesc(null)}
+                                        onClick={() => {
+                                          setSelectedVisualStyle(style.name.zh);
+                                          setShowVisualStyleDropdown(false);
+                                          setActiveVisualStyleCategory(null);
+                                          setHoveredStyleDesc(null);
+                                        }}
+                                        className={`w-full px-4 py-2.5 rounded-lg text-left transition-all ${
+                                          selectedVisualStyle === style.name.zh 
+                                            ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20' 
+                                            : 'hover:bg-brand-primary/10 text-main'
+                                        }`}
+                                      >
+                                        <span className="text-xs font-medium">{style.name[uiLang]}</span>
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="h-full flex flex-col items-center justify-center text-dim opacity-50 space-y-2">
+                                   <Sparkles className="w-8 h-8" />
+                                   <p className="text-[10px]">{t.selectStyle}</p>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Description Panel (Conditionally rendered) */}
+                            <AnimatePresence>
+                              {hoveredStyleDesc && (
+                                <motion.div
+                                  initial={{ width: 0, opacity: 0 }}
+                                  animate={{ width: 260, opacity: 1 }}
+                                  exit={{ width: 0, opacity: 0 }}
+                                  transition={{ type: "spring", bounce: 0, duration: 0.3 }}
+                                  className="bg-brand-bg/40 flex flex-col relative overflow-hidden border-l border-brand-border"
+                                >
+                                  <div className="w-[260px] p-6 h-full flex flex-col relative">
+                                    <motion.div
+                                      initial={{ opacity: 0, x: 10 }}
+                                      animate={{ opacity: 1, x: 0 }}
+                                      transition={{ delay: 0.05 }}
+                                      className="flex flex-col gap-4 relative z-10"
+                                    >
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-brand-primary/10 flex items-center justify-center shrink-0">
+                                          <Info className="w-4 h-4 text-brand-primary" />
+                                        </div>
+                                        <h4 className="text-[10px] font-black text-brand-primary uppercase tracking-[0.2em] line-clamp-1">
+                                          {uiLang === 'zh' ? '风格详情' : 'Style Details'}
+                                        </h4>
+                                      </div>
+                                      <div className="h-[1px] bg-brand-border/50 w-full" />
+                                      <p className="text-xs leading-relaxed text-main/90 font-medium italic">
+                                        {hoveredStyleDesc[uiLang]}
+                                      </p>
+                                    </motion.div>
+                                    
+                                    {/* Decorative blur circle */}
+                                    <div className="absolute -right-8 -bottom-8 w-48 h-48 bg-brand-primary/5 rounded-full blur-3xl pointer-events-none" />
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+
               {/* Total Video Duration */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -1725,13 +2054,67 @@ export default function App() {
                 </AnimatePresence>
               </div>
 
+              {/* Manual Shot Count */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <label className="label-micro">{t.shotCount}</label>
+                    <span className="text-[10px] text-dim font-mono">{t.optional}</span>
+                  </div>
+                  <button
+                    onClick={() => setIsShotCountEnabled(!isShotCountEnabled)}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      isShotCountEnabled ? 'bg-brand-primary' : 'bg-brand-border'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        isShotCountEnabled ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                <AnimatePresence>
+                  {isShotCountEnabled && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="flex items-center gap-2 bg-brand-surface border border-brand-border rounded-lg px-3 py-2 focus-within:border-brand-primary transition-all">
+                        <Film className="w-4 h-4 text-muted" />
+                        <select
+                          value={manualShotCount}
+                          onChange={(e) => setManualShotCount(e.target.value)}
+                          className="flex-1 bg-transparent border-none outline-none text-sm text-main font-mono appearance-none"
+                        >
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                            <option key={n} value={n.toString()} className="bg-brand-surface text-main">
+                              {n} {t.shotsUnit}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="w-3 h-3 text-muted pointer-events-none" />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
               {/* Creative Input */}
               <div className="space-y-3 flex flex-col">
                 <div className="flex items-center justify-between">
                   <label className="label-micro">{t.creativeConcept}</label>
                   {userInput && (
                     <button 
-                      onClick={() => setShowSaveTemplateModal(true)}
+                      onClick={() => {
+                        setNewTemplateName("");
+                        setEditingTemplateId(null);
+                        setNewTemplateCategory("cinematic");
+                        setShowSaveTemplateModal(true);
+                      }}
                       className="text-[10px] text-brand-text hover:underline flex items-center gap-1"
                     >
                       <Plus className="w-3 h-3" />
@@ -1899,7 +2282,7 @@ export default function App() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="flex flex-col gap-6 lg:overflow-y-auto lg:pr-2 custom-scrollbar min-h-0 pb-4"
+              className="flex flex-col gap-6 pb-4"
             >
               <section className="console-panel flex flex-col shrink-0">
                 <div className="console-header">
@@ -2006,16 +2389,28 @@ export default function App() {
                   </div>
 
                   {/* Tip Area */}
-                  <div className="flex items-start gap-2 p-3 bg-brand-primary/5 border border-brand-primary/10 rounded-lg">
-                    <Info className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
-                    <p className="text-[10px] text-muted leading-relaxed">
-                      {t.reverseTip}
-                    </p>
+                  <div className="flex flex-col gap-2 p-3 bg-brand-primary/5 border border-brand-primary/10 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <Info className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
+                      <p className="text-[10px] text-muted leading-relaxed">
+                        {t.reverseTip}
+                      </p>
+                    </div>
+                    {apiConfig.provider !== "gemini" && (
+                      <div className="flex items-start gap-2 pt-2 border-t border-brand-primary/10">
+                        <Sparkles className="w-3.5 h-3.5 text-brand-primary shrink-0 mt-0.5" />
+                        <p className="text-[9px] text-brand-text/80 leading-relaxed italic">
+                          {uiLang === "zh" 
+                            ? "提示：视频反推功能在 Gemini 模型下效果最佳。当前模型可能无法处理视频文件。" 
+                            : "Tip: Video reverse works best with Gemini models. Current provider may not support direct video file analysis."}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
-                  {error && (
+                  {reverseError && (
                     <div className="text-red-500 text-xs font-mono bg-red-500/10 p-2 border border-red-500/20 rounded">
-                      {error}
+                      {reverseError}
                     </div>
                   )}
                 </div>
@@ -2055,7 +2450,7 @@ export default function App() {
       </div>
 
         {/* Right Column: Output Panel */}
-        <div ref={rightPanelRef} className="lg:col-span-7 flex flex-col gap-6 lg:overflow-y-auto lg:pr-2 custom-scrollbar min-h-0">
+        <div ref={rightPanelRef} className="lg:col-span-7 flex flex-col gap-6">
           <section className="console-panel flex-1 flex flex-col relative">
             <div className="console-header">
               <div className="flex items-center gap-2">
@@ -2063,13 +2458,29 @@ export default function App() {
                 <span className="label-micro">{t.optimizedPrompt}</span>
               </div>
               {result && (
-                <button 
-                  onClick={() => copyToClipboard(result.mainPrompt)}
-                  className="flex items-center gap-1 text-[10px] font-bold text-muted hover:text-brand-text transition-colors"
-                >
-                  {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                  {copied ? t.copied : t.copyPrompt}
-                </button>
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={() => copyToClipboard(result.mainPrompt)}
+                    className="flex items-center gap-1 text-[10px] font-bold text-muted hover:text-brand-text transition-colors"
+                  >
+                    {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    {copied ? t.copied : t.copyPrompt}
+                  </button>
+                  <button 
+                    onClick={handleShare}
+                    className={`flex items-center gap-1 text-[10px] font-bold transition-colors ${shareStatus === 'success' ? 'text-green-500' : 'text-muted hover:text-brand-text'}`}
+                  >
+                    {shareStatus === 'success' ? <Check className="w-3 h-3" /> : <Share2 className="w-3 h-3" />}
+                    {shareStatus === 'success' ? t.copied : t.sharePrompt}
+                  </button>
+                  <button 
+                    onClick={handleDownload}
+                    className={`flex items-center gap-1 text-[10px] font-bold transition-colors ${downloadStatus === 'success' ? 'text-green-500' : 'text-muted hover:text-brand-text'}`}
+                  >
+                    {downloadStatus === 'success' ? <CheckCircle2 className="w-3 h-3" /> : <Download className="w-3 h-3" />}
+                    {downloadStatus === 'success' ? t.copied : t.downloadTxt}
+                  </button>
+                </div>
               )}
             </div>
 
@@ -2079,10 +2490,17 @@ export default function App() {
                   <motion.div 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="h-full flex flex-col items-center justify-center text-center gap-4 opacity-20"
+                    className="h-full flex flex-col items-center justify-center text-center gap-6 opacity-40 select-none grayscale"
                   >
-                    <Video className="w-16 h-16" />
-                    <p className="font-mono text-sm tracking-widest">{t.awaitingInput}</p>
+                    <div className="w-20 h-20 rounded-full bg-brand-border/20 flex items-center justify-center border border-brand-border/30">
+                      <Video className="w-10 h-10 text-muted" />
+                    </div>
+                    <div className="space-y-2">
+                       <p className="font-mono text-sm tracking-[0.3em] text-dim uppercase font-bold">{t.awaitingInput}</p>
+                       <p className="text-[10px] text-muted opacity-60 tracking-wider">
+                         {uiLang === 'zh' ? '暂无生成指令' : 'No instructions yet'}
+                       </p>
+                    </div>
                   </motion.div>
                 ) : isGenerating ? (
                   <motion.div 
@@ -2158,7 +2576,9 @@ export default function App() {
                         <div className="h-[1px] flex-1 bg-brand-border" />
                       </div>
                       <div className="bg-[var(--input-bg)] p-6 rounded border border-brand-border font-mono text-sm leading-relaxed whitespace-pre-wrap selection:bg-brand-primary selection:text-black">
-                        {result?.mainPrompt}
+                        {result?.parameters.language === selectedLanguage 
+                          ? result?.mainPrompt 
+                          : result?.translation}
                       </div>
                     </div>
 
@@ -2170,7 +2590,9 @@ export default function App() {
                         <div className="h-[1px] flex-1 bg-brand-border" />
                       </div>
                       <div className="p-4 text-muted text-sm italic leading-relaxed">
-                        {result?.translation}
+                        {result?.parameters.language === selectedLanguage 
+                          ? result?.translation 
+                          : result?.mainPrompt}
                       </div>
                     </div>
 
@@ -2278,6 +2700,26 @@ export default function App() {
                     autoFocus
                   />
                 </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-muted uppercase tracking-widest">{uiLang === "zh" ? "选择分类" : "Select Category"}</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {Object.entries(t.templateCategories).map(([key, label]) => (
+                      <button
+                        key={key}
+                        onClick={() => setNewTemplateCategory(key)}
+                        className={`px-3 py-2 rounded-lg border text-[10px] font-bold transition-all ${
+                          newTemplateCategory === key 
+                            ? "bg-brand-primary text-black border-brand-primary" 
+                            : "bg-brand-surface text-muted border-brand-border hover:bg-brand-border/50"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="flex gap-3 pt-2">
                   <button 
                     onClick={() => setShowSaveTemplateModal(false)}
@@ -2311,9 +2753,14 @@ export default function App() {
             KLING OMNI {t.footerReady}
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex items-center gap-4">
+            <p className="text-[10px] font-mono text-dim">
+              {t.footerDesign}
+            </p>
+          </div>
           <p className="text-[10px] font-mono text-dim">
-            {t.footerDesign}
+            {uiLang === 'zh' ? 'S06109力荐' : 'S06109 Recommended'}
           </p>
         </div>
       </footer>

@@ -42,11 +42,11 @@
 
 @layer components {
   .console-panel {
-    @apply bg-brand-surface border border-brand-border rounded-lg overflow-hidden shadow-sm;
+    @apply bg-brand-surface border border-brand-border rounded-lg shadow-sm;
   }
   
   .console-header {
-    @apply px-4 py-2 border-b border-brand-border bg-[var(--input-bg)]/50 flex items-center justify-between;
+    @apply px-4 py-2 border-b border-brand-border bg-[var(--input-bg)]/50 flex items-center justify-between rounded-t-lg;
   }
 
   .btn-primary {

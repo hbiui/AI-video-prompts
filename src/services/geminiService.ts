@@ -16,12 +16,11 @@ function getAiClient() {
       console.warn("GEMINI_API_KEY is not defined. Please check your .env file.");
     }
 
-    // Custom fetch for Gemini in Electron
-    const requestOptions: any = {};
-    if (typeof window !== 'undefined' && (window as any).ipcRenderer) {
-      requestOptions.customFetch = universalFetch;
-    }
-
+    // Standard fetch for Gemini
+    const requestOptions: any = {
+      customFetch: universalFetch
+    };
+    
     _ai = new GoogleGenAI({ 
       apiKey: apiKey || "dummy_key",
       ...requestOptions
@@ -46,6 +45,7 @@ export interface PromptResult {
     duration: string;
     motionIntensity?: string;
     shotCount: string;
+    language: LanguageType;
   };
   suggestions: Suggestion[];
 }
@@ -68,23 +68,55 @@ const SYSTEM_INSTRUCTION = `你是一位顶级的 AI 视频生成提示词工程
 - **参考引用**：使用 <<<image_1>>> 等标签引用图片。
 - **指令**：支持单次生成最多 6 个分镜，格式如 Shot 1 (3s)。
 
-#### 3. 动态分镜规划 (Dynamic Shot Planning)：
-- **分镜数量决定**：不要使用固定数量的分镜。你应该根据以下因素自动推导分镜数量：
-    - **视频总时长**：若指定了总时长，通常每 2-5 秒规划一个分镜。
-    - **创意复杂度**：复杂的叙事或多场景转换需要更多分镜。
-    - **视频手法**：若指定了特定手法（如“希区柯克变焦”或“长镜头”），分镜规划应体现该手法的专业性。
-    - **参考素材**：若提供了多张参考图，应规划分镜来合理展示这些素材。
-- **时长分配**：若指定了总时长，请合理分配到每个分镜，确保总和一致。
+#### 3. 动态分镜规划 (Dynamic Shot Planning) - 核心指令：
+- **拒绝固定分镜**：禁止每次都输出固定（如 3 个或 4 个）分镜。你必须根据输入动态计算。
+- **强制分镜数量 (Force Shot Count)**：如果你收到了 \`shotCount\` 参数，你必须严格按照此数量规划分镜。在规划分镜时，手动指定的 \`shotCount\` 优先级高于自动推导逻辑。
+- **推导逻辑依赖**：
+    - **分镜数量 (User Input)**：优先级最高。如果指定了，必须生成对应数量的分镜。
+    - **视频总时长 (Primary)**：如果没有指定 \`shotCount\`，则根据时长推导。
+        - 1-5秒：通常为 1-2 个分镜。
+        - 6-10秒：通常为 2-4 个分镜。
+        - 11-15秒：通常为 3-6 个分镜。
+    - **视频手法 (Optional)**：若指定了“长镜头”，则分镜数量应极少（甚至只有 1 个）；若指定了“快节奏剪辑”，分镜数量应增加格式建议。
+    - **创意概念/分镜脚本 (Context)**：分析用户的描述。如果描述中包含“首先...然后...最后...”或明显的场景切换，即便时长较短，也应规划多个分镜。
+    - **视觉风格 (Visual Style)**：如果用户指定了具体的视觉风格，你必须将该风格的特征深度融入到每一个分镜的“风格/灯光”或“视觉描述”中。严禁只在标题提到风格，必须体现在具体的画面描述（如笔触、光影色调、材质感）中。
+    - **参考素材**：每增加一张需要展示的参考图，通常建议增加 1 个对应分镜。
+- **分镜时长显示规范 (MANDATORY)**：
+    - **显示时长**：当 \`totalDuration\` 为有效数字（用户输入了时长）时，分镜标题必须标注时长区间，格式如 \`[Shot 1] (2-3s)\` 或 \`[第 1 镜] (2-3s)\`。
+    - **隐藏时长**：当 \`totalDuration\` 未指定或无输入时，**严禁**在分镜标题或内容中出现任何时长信息（如 2s, 3秒, (2-3s) 等）。标题应仅为 \`[Shot 1]\` 或 \`[第 1 镜]\`。
+- **强制约束**：所有分镜的时长总和必须严格等于 \`totalDuration\`（如果指定了）。如果没有指定，默认按 5-10 秒规划分镜，但不得在输出中显示具体秒数。
+- **参数返回**：在 \`parameters.shotCount\` 中返回你实际生成的数字。
 
-#### 4. 通用最优解：
+#### 4. 格式化规范 (Formatting Standard) - **强制执行**：
+- **分段布局与强制换行**：每一个分镜标题及所有结构标签（如主体、动作、环境）都必须**单独占一行**。控制输出必须换行。
+- **Seedance 2.0 强制结构**（中文版示例，每一行必须显示换行）：
+  [镜头 N] (如果有总时长则在此显示 (X-Ys))
+  主体 (Subject): [内容]
+  动作 (Action): [内容]
+  环境 (Environment): [内容]
+  镜头语言 (Camera): [内容]
+  风格/灯光 (Style/Lighting): [内容]
+  约束 (Constraints): [内容]
+- **Kling 3.0 Omni 强制结构**（中文版示例，每一行必须显示换行）：
+  [第 N 镜] (如果有总时长则在此显示 (X-Ys))
+  主体及外貌: [内容]
+  动作: [内容]
+  环境: [内容]
+  镜头运动: [内容]
+  音频氛围: [内容]
+  运动强度: [数字]
+- **换行一致性**：无论是否显示时长，每一项标签必须保持**新行 (Newline)** 开头，严禁合并。
+- **语言一致性**：\`mainPrompt\` 和 \`translation\` 的结构必须完全一致。英文版使用对应的英文标签（如 Subject, Action 等）。时长显示逻辑（显示或隐藏）必须在双语中同步执行。
+
+#### 5. 通用最优解：
 - 避免使用“漂亮”、“好看”等模糊词。
 - 景别（特写、中景、全景）和运镜方式（推、拉、摇、移）为必填项。
 - 若有图片，聚焦描述“图片中元素将要发生的动作和运动轨迹”，而非重复描述视觉特征。
 
 ### 输出要求
 请返回 JSON 格式的数据，包含以下字段：
-- mainPrompt: 优化后的专业提示词（根据用户选择的语言）。
-- translation: 对应语言的翻译版本。
+- mainPrompt: 优化后的专业提示词（严格遵守上述分段格式，必须使用用户要求的目标语言输出）。
+- translation: 对应语言的翻译版本（如果用户要求输出语言为“English”，则 mainPrompt 为英文，translation 为中文；反之亦然）。
 - parameters: 包含 model, duration, motionIntensity (仅Kling), shotCount (实际生成的分镜数量)。
 - suggestions: 4-6个分类建议，每个建议包含 category (如 "Cinematic", "Action", "Atmosphere", "Lighting") 和 text (具体的微调指令)。`;
 
@@ -94,9 +126,9 @@ export interface ImageObject {
   keyword?: string;
 }
 
-// Helper for cross-platform fetch (handles CORS in Electron)
+// Helper for cross-platform fetch (handles CORS in web app via local proxy and Electron via IPC)
 async function universalFetch(url: string, options: any) {
-  // Check if running in Electron and proxy is available
+  // 1. Check if running in Electron and proxy is available
   if (typeof window !== 'undefined' && (window as any).ipcRenderer) {
     try {
       const result = await (window as any).ipcRenderer.invoke('fetch-proxy', { url, options });
@@ -113,7 +145,35 @@ async function universalFetch(url: string, options: any) {
       console.error("Electron fetch proxy failed, falling back to standard fetch", e);
     }
   }
-  return fetch(url, options);
+
+  // 2. If it's already a local request, don't proxy
+  if (url.startsWith('/') || url.startsWith('http://localhost') || url.startsWith('http://0.0.0.0')) {
+    return fetch(url, options);
+  }
+
+  // 3. Use Web Proxy for standard web environment
+  try {
+    const proxyResponse = await fetch('/api/proxy', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ url, options }),
+    });
+
+    const data = await proxyResponse.text();
+    
+    return {
+      ok: proxyResponse.ok,
+      status: proxyResponse.status,
+      json: async () => JSON.parse(data),
+      text: async () => data,
+      headers: proxyResponse.headers
+    } as any;
+  } catch (e) {
+    console.error("Proxy fetch failed, falling back to standard fetch", e);
+    return fetch(url, options);
+  }
 }
 
 // Helper to format API errors into user-friendly messages
@@ -158,13 +218,12 @@ function formatApiError(error: any, provider: string): string {
 export async function testApiConnection(config: { provider: string; apiKey: string; baseUrl?: string; modelName?: string }): Promise<{ success: boolean; message: string }> {
   try {
     if (config.provider === "gemini") {
-      const requestOptions: any = {};
-      if (typeof window !== 'undefined' && (window as any).ipcRenderer) {
-        requestOptions.customFetch = universalFetch;
-      }
+      const requestOptions: any = {
+        customFetch: universalFetch
+      };
       const client = new GoogleGenAI({ apiKey: config.apiKey, ...requestOptions });
       await client.models.generateContent({
-        model: config.modelName || "gemini-1.5-flash",
+        model: config.modelName || "gemini-3-flash-preview",
         contents: "Hi"
       });
       return { success: true, message: "Gemini API 连接成功！" };
@@ -232,7 +291,9 @@ async function callAnthropic(
   images?: ImageObject[],
   apiConfig?: { provider: string; apiKey: string; baseUrl?: string; modelName?: string },
   technique?: string,
-  totalDuration?: number
+  totalDuration?: number,
+  shotCount?: number,
+  visualStyle?: string
 ): Promise<PromptResult> {
   try {
     const baseUrl = apiConfig?.baseUrl || "https://api.anthropic.com/v1";
@@ -245,7 +306,28 @@ async function callAnthropic(
     }).join("\n");
 
     const userContent: any[] = [
-      { type: "text", text: `用户创意: "${userInput}"\n选择模型: ${model}\n输出语言: ${language}\n${technique ? `指定视频手法: ${technique}\n` : ""}${totalDuration ? `指定视频总时长: ${totalDuration}秒。\n` : ""}\n${imageContext}\n\n请根据以上信息，结合视频时长、手法和创意复杂度，自动推导并决定最合适的分镜数量，生成专业的视频提示词。确保分镜时长之和等于总时长。` }
+      { 
+        type: "text", 
+        text: `## 任务指令
+请基于以下输入配置，自动推导最科学的分镜数量与内容：
+- 用户创意/脚本: "${userInput}"
+- 目标模型: ${model}
+- 输出语言 (Target Language): ${language} (注意：mainPrompt 必须对应此语言，translation 则为另一种语言)
+- 视频手法: ${technique || "未指定"}
+- 视觉风格: ${visualStyle || "未指定"}
+- 视频总时长: ${totalDuration ? `${totalDuration}秒` : "未指定"}
+- 分镜数量: ${shotCount || "自动推导（如果没有指定）"}
+- 参考素材: 已提供图片及描述如下
+
+## 规划逻辑
+1. 严禁使用固定模板。
+2. 结合时长 ${totalDuration || ""}、手法 ${technique || ""} 和创意复杂度决定分镜数。
+3. 如果指定了分镜数量 ${shotCount || ""}，则必须严格输出对应数量的分镜。
+4. 确保分镜时长总和一致。
+5. 必须遵守语言设定：如果输出语言为 English，则 mainPrompt 必须是全英文提示词。
+
+${imageContext}` 
+      }
     ];
 
     if (images && images.length > 0) {
@@ -305,7 +387,9 @@ async function callAnthropic(
       // Anthropic sometimes adds markdown blocks even when told not to
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       const jsonStr = jsonMatch ? jsonMatch[0] : content;
-      return JSON.parse(jsonStr) as PromptResult;
+      const parsed = JSON.parse(jsonStr) as PromptResult;
+      parsed.parameters.language = language;
+      return parsed;
     } catch (parseError) {
       console.error("Anthropic Parse Error. Raw content:", content);
       throw new Error("Failed to parse Anthropic response as JSON.");
@@ -322,7 +406,9 @@ export async function generateVideoPrompt(
   images?: (string | ImageObject)[], // Support both old and new formats
   apiConfig?: { provider: string; apiKey: string; baseUrl?: string; modelName?: string },
   technique?: string,
-  totalDuration?: number
+  totalDuration?: number,
+  shotCount?: number,
+  visualStyle?: string
 ): Promise<PromptResult> {
   // Normalize images to ImageObject[]
   const normalizedImages: ImageObject[] = (images || []).map(img => {
@@ -333,20 +419,20 @@ export async function generateVideoPrompt(
   // If custom API is provided and has a key, use the appropriate provider
   if (apiConfig && apiConfig.apiKey) {
     if (apiConfig.provider === "openai" || apiConfig.provider === "doubao" || apiConfig.provider === "custom") {
-      return callOpenAICompatible(userInput, model, language, normalizedImages, apiConfig, technique, totalDuration);
+      return callOpenAICompatible(userInput, model, language, normalizedImages, apiConfig, technique, totalDuration, shotCount, visualStyle);
     }
     if (apiConfig.provider === "anthropic") {
-      return callAnthropic(userInput, model, language, normalizedImages, apiConfig, technique, totalDuration);
+      return callAnthropic(userInput, model, language, normalizedImages, apiConfig, technique, totalDuration, shotCount, visualStyle);
     }
     // For Gemini, we could re-initialize the client with the user's key
     if (apiConfig.provider === "gemini") {
       const userAi = new GoogleGenAI({ apiKey: apiConfig.apiKey });
-      return runGeminiGeneration(userAi, userInput, model, language, normalizedImages, apiConfig.modelName, technique, totalDuration);
+      return runGeminiGeneration(userAi, userInput, model, language, normalizedImages, apiConfig.modelName, technique, totalDuration, shotCount, visualStyle);
     }
   }
 
   // Default to system Gemini
-  return runGeminiGeneration(getAiClient(), userInput, model, language, normalizedImages, undefined, technique, totalDuration);
+  return runGeminiGeneration(getAiClient(), userInput, model, language, normalizedImages, undefined, technique, totalDuration, shotCount, visualStyle);
 }
 
 async function runGeminiGeneration(
@@ -357,7 +443,9 @@ async function runGeminiGeneration(
   images?: ImageObject[],
   customModelName?: string,
   technique?: string,
-  totalDuration?: number
+  totalDuration?: number,
+  shotCount?: number,
+  visualStyle?: string
 ): Promise<PromptResult> {
   const modelName = customModelName || "gemini-3.1-pro-preview";
   
@@ -390,15 +478,26 @@ async function runGeminiGeneration(
     });
   }
 
-  parts.push({
-    text: `用户创意: "${userInput}"
-选择模型: ${model}
-输出语言: ${language}
-${technique ? `指定视频手法: ${technique}` : ""}
-${totalDuration ? `指定视频总时长: ${totalDuration}秒。` : ""}
+    parts.push({
+      text: `## 任务指令 (Task)
+请基于以下输入配置，自动推导最科学的分镜数量与内容：
+1. 用户创意/脚本: "${userInput}"
+2. 目标模型: ${model}
+3. 输出语言 (Target Language): ${language} (注意：mainPrompt 必须使用此语言，translation 为另一种语言)
+4. 视频手法: ${technique || "未指定（请根据创意自动选择最合适的）"}
+5. 视觉风格: ${visualStyle || "未指定（请根据创意自动选择最合适的）"}
+6. 视频总时长: ${totalDuration ? `${totalDuration}秒` : "未指定（请建议一个合适的时长）"}
+7. 分镜数量: ${shotCount || "自动推导（如果没有指定）"}
+8. 参考素材: 已上传 ${images?.length || 0} 张参考图
 
-请根据以上信息，结合视频时长、手法和创意复杂度，自动推导并决定最合适的分镜数量，生成专业的视频提示词。确保分镜时长之和等于总时长。`,
-  });
+## 规划要求
+- **严禁固定分镜数量**：分析用户脚本的动作节点和总时长。
+- **强制分镜数**：如果指定了分镜数量 (${shotCount})，必须严格输出对应数量的分镜。
+- **语言权重**：如果输出语言为 ${language}，则 mainPrompt 必须严格按照此语言生成。
+- **时长匹配**：分镜时长总和必须等于 ${totalDuration || "你建议的时长"}。
+- **分镜内容**：根据视频手法决定运镜，根据参考素材决定视觉元素。
+- **输出格式**：返回符合 JSON Schema 的结果。`,
+    });
 
   try {
     const response = await client.models.generateContent({
@@ -446,7 +545,9 @@ ${totalDuration ? `指定视频总时长: ${totalDuration}秒。` : ""}
     }
 
     try {
-      return JSON.parse(text) as PromptResult;
+      const parsed = JSON.parse(text) as PromptResult;
+      parsed.parameters.language = language;
+      return parsed;
     } catch (parseError) {
       console.error("JSON Parse Error. Raw text:", text);
       throw new Error("Failed to parse AI response as JSON.");
@@ -463,7 +564,9 @@ async function callOpenAICompatible(
   images?: ImageObject[],
   apiConfig?: { provider: string; apiKey: string; baseUrl?: string; modelName?: string },
   technique?: string,
-  totalDuration?: number
+  totalDuration?: number,
+  shotCount?: number,
+  visualStyle?: string
 ): Promise<PromptResult> {
   try {
     const baseUrl = apiConfig?.baseUrl || (apiConfig?.provider === "openai" ? "https://api.openai.com/v1" : "");
@@ -482,7 +585,27 @@ async function callOpenAICompatible(
       { 
         role: "user", 
         content: [
-          { type: "text", text: `用户创意: "${userInput}"\n选择模型: ${model}\n输出语言: ${language}\n${technique ? `指定视频手法: ${technique}\n` : ""}${totalDuration ? `指定视频总时长: ${totalDuration}秒。\n` : ""}\n${imageContext}\n\n请根据以上信息，结合视频时长、手法和创意复杂度，自动推导并决定最合适的分镜数量，生成专业的视频提示词。确保分镜时长之和等于总时长。` },
+          { 
+            type: "text", 
+            text: `## 任务指令
+请基于以下输入配置，自动推导最科学的分镜数量与内容：
+- 用户创意/脚本: "${userInput}"
+- 目标模型: ${model}
+- 输出语言 (Target Language): ${language} (注意：mainPrompt 必须使用此语言，translation 则为另一种语言)
+- 视频手法: ${technique || "未指定"}
+- 视觉风格: ${visualStyle || "未指定"}
+- 视频总时长: ${totalDuration ? `${totalDuration}秒` : "未指定"}
+- 分镜数量: ${shotCount || "自动推导（如果没有指定）"}
+- 参考素材: 已提供 ${images?.length || 0} 个素材描述及图片
+
+## 规划逻辑
+1. 严禁使用固定模板。
+2. 结合时长 ${totalDuration || ""}、手法 ${technique || ""} 和创意复杂度决定分镜数。
+3. 如果指定了分镜数量 ${shotCount || ""}，则必须严格输出对应数量的分镜。
+4. 确保分镜时长总和一致。
+5. 强调：如果输出语言是 English，则 mainPrompt 字段必须是英文提示词。
+\n${imageContext}` 
+          },
           ...(images || [])
             .filter(img => img.url && typeof img.url === 'string')
             .map(img => ({
@@ -529,7 +652,9 @@ async function callOpenAICompatible(
     }
 
     try {
-      return JSON.parse(content) as PromptResult;
+      const parsed = JSON.parse(content) as PromptResult;
+      parsed.parameters.language = language;
+      return parsed;
     } catch (parseError) {
       console.error("OpenAI Parse Error. Raw content:", content);
       throw new Error("Failed to parse AI response as JSON. Please try again.");
@@ -556,7 +681,10 @@ export async function reverseVideoPrompt(
 
   try {
     if (apiConfig?.provider === "gemini" || !apiConfig) {
-      const client = apiConfig?.apiKey ? new GoogleGenAI({ apiKey: apiConfig.apiKey }) : getAiClient();
+      const requestOptions: any = {
+        customFetch: universalFetch
+      };
+      const client = apiConfig?.apiKey ? new GoogleGenAI({ apiKey: apiConfig.apiKey, ...requestOptions }) : getAiClient();
       const modelName = apiConfig?.modelName || "gemini-3.1-pro-preview";
 
       const parts: any[] = [];
