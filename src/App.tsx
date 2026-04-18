@@ -499,7 +499,7 @@ export default function App() {
             ) : (
               <ImageIcon className="w-3.5 h-3.5 shrink-0 opacity-40" />
             )}
-            <span className="truncate opacity-90 text-[9px] leading-none">
+            <span className="truncate opacity-90 text-xs leading-none">
               {img.keyword ? `@${img.keyword}` : `${uiLang === "zh" ? "图片" : "Image"}${imgIdx + 1}`}
             </span>
           </span>
@@ -1019,7 +1019,7 @@ export default function App() {
             className="fixed z-[100] w-64 bg-brand-surface border border-brand-border rounded-lg shadow-2xl overflow-hidden flex flex-col"
           >
             <div className="p-3 bg-[var(--input-bg)]/40 border-b border-brand-border">
-              <span className="text-[10px] font-bold text-muted uppercase tracking-widest">{t.mentionTitle}</span>
+              <span className="text-sm font-bold text-muted uppercase tracking-widest">{t.mentionTitle}</span>
             </div>
             <div className="max-h-64 overflow-y-auto p-1">
               <button
@@ -1030,8 +1030,8 @@ export default function App() {
                   <X className="w-4 h-4 rotate-45" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-xs font-bold">{t.createSubject}</span>
-                  <span className="text-[10px] text-muted">{t.addFromLocal}</span>
+                  <span className="text-sm font-bold">{t.createSubject}</span>
+                  <span className="text-sm text-muted">{t.addFromLocal}</span>
                 </div>
               </button>
               
@@ -1043,11 +1043,11 @@ export default function App() {
                 >
                   <img src={img.url} className="w-8 h-8 rounded object-cover border border-brand-border" alt="" />
                   <div className="flex flex-col">
-                    <span className="text-xs font-medium">
+                    <span className="text-sm font-medium">
                       {img.keyword ? `@${img.keyword}` : `${t.imageLabel}${idx + 1}`}
                     </span>
                     {img.keyword && (
-                      <span className="text-[8px] text-dim uppercase tracking-tighter">
+                      <span className="text-xs text-dim uppercase tracking-tighter">
                         {t.imageLabel}{idx + 1}
                       </span>
                     )}
@@ -1078,7 +1078,7 @@ export default function App() {
                 }}
               />
             )}
-            <h1 className="text-2xl font-bold tracking-tighter uppercase italic">{t.title}</h1>
+            <h1 className="text-2xl font-bold tracking-tighter uppercase">{t.title}</h1>
             <button 
               onClick={() => setIsDarkMode(!isDarkMode)}
               className="p-1.5 rounded-full hover:bg-brand-border/50 transition-colors text-brand-primary"
@@ -1094,14 +1094,14 @@ export default function App() {
               <Languages className="w-5 h-5" />
             </button>
           </div>
-          <p className="text-muted text-sm max-w-md">
+          <p className="text-muted text-base max-w-md">
             {t.subtitle}
           </p>
         </div>
         <div className="flex items-center gap-4">
           <button 
             onClick={() => setShowTemplates(!showTemplates)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded border transition-colors text-[10px] font-bold ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded border transition-colors text-sm font-bold ${
               showTemplates ? "bg-brand-primary text-black border-brand-primary" : "bg-brand-surface border-brand-border text-main hover:border-brand-primary"
             }`}
           >
@@ -1110,7 +1110,7 @@ export default function App() {
           </button>
           <button 
             onClick={() => setShowHistory(!showHistory)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded border transition-colors text-[10px] font-bold ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded border transition-colors text-sm font-bold ${
               showHistory ? "bg-brand-primary text-black border-brand-primary" : "bg-brand-surface border-brand-border text-main hover:border-brand-primary"
             }`}
           >
@@ -1119,14 +1119,14 @@ export default function App() {
           </button>
           <button 
             onClick={() => setShowSettings(!showSettings)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded border transition-colors text-[10px] font-bold ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded border transition-colors text-sm font-bold ${
               showSettings ? "bg-brand-primary text-black border-brand-primary" : "bg-brand-surface border-brand-border text-main hover:border-brand-primary"
             }`}
           >
             <SettingsIcon className="w-3 h-3" />
             {t.settings}
           </button>
-          <div className="flex items-center gap-4 text-xs font-mono text-muted">
+          <div className="flex items-center gap-4 text-sm font-mono text-muted">
             <div className="flex items-center gap-1">
               <div className="w-2 h-2 rounded-full bg-brand-primary animate-pulse" />
               {t.systemOnline}
@@ -1166,11 +1166,11 @@ export default function App() {
                 <div className="flex-1 overflow-y-auto p-6 space-y-8">
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-muted uppercase tracking-widest">{t.apiProvider}</label>
+                      <label className="text-sm font-bold text-muted uppercase tracking-widest">{t.apiProvider}</label>
                       <select 
                         value={apiConfig.provider}
                         onChange={(e) => handleProviderChange(e.target.value as any)}
-                        className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-sm focus:border-brand-primary outline-none transition-all appearance-none"
+                        className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-base focus:border-brand-primary outline-none transition-all appearance-none"
                       >
                         <option value="gemini">Google Gemini</option>
                         <option value="openai">OpenAI ChatGPT</option>
@@ -1181,7 +1181,7 @@ export default function App() {
                     </div>
 
                     <div className="p-4 bg-brand-primary/5 border border-brand-primary/20 rounded-lg space-y-2">
-                      <p className="text-[11px] text-muted leading-relaxed">
+                      <p className="text-sm text-muted leading-relaxed">
                         {t.providerInfo[apiConfig.provider]}
                       </p>
                       <a 
@@ -1193,43 +1193,43 @@ export default function App() {
                         }
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[10px] text-brand-text hover:underline inline-flex items-center gap-1 font-bold"
+                        className="text-sm text-brand-text hover:underline inline-flex items-center gap-1 font-bold"
                       >
                         {t.applyLink} <ExternalLink className="w-2.5 h-2.5" />
                       </a>
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-muted uppercase tracking-widest">{t.apiKey}</label>
+                      <label className="text-sm font-bold text-muted uppercase tracking-widest">{t.apiKey}</label>
                       <input 
                         type="password"
                         value={apiConfig.apiKey}
                         onChange={(e) => setApiConfig({...apiConfig, apiKey: e.target.value})}
                         placeholder="sk-..."
-                        className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-sm focus:border-brand-primary outline-none transition-all"
+                        className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-base focus:border-brand-primary outline-none transition-all"
                       />
                     </div>
 
                     {apiConfig.provider !== "gemini" && (
                       <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-muted uppercase tracking-widest">{t.apiBaseUrl}</label>
+                        <label className="text-sm font-bold text-muted uppercase tracking-widest">{t.apiBaseUrl}</label>
                         <input 
                           type="text"
                           value={apiConfig.baseUrl}
                           onChange={(e) => setApiConfig({...apiConfig, baseUrl: e.target.value})}
                           placeholder="https://api.openai.com/v1"
-                          className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-sm focus:border-brand-primary outline-none transition-all"
+                          className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-base focus:border-brand-primary outline-none transition-all"
                         />
                       </div>
                     )}
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <label className="text-[10px] font-bold text-muted uppercase tracking-widest">{t.apiModelName}</label>
+                        <label className="text-sm font-bold text-muted uppercase tracking-widest">{t.apiModelName}</label>
                         <button 
                           onClick={handleTestConnection}
                           disabled={testStatus.loading}
-                          className={`text-[9px] font-bold px-2 py-0.5 rounded border transition-all ${
+                          className={`text-xs font-bold px-2 py-0.5 rounded border transition-all ${
                             testStatus.success === true ? 'bg-green-500/10 border-green-500/50 text-green-500' :
                             testStatus.success === false ? 'bg-red-500/10 border-red-500/50 text-red-500' :
                             'bg-brand-primary/10 border-brand-primary/30 text-brand-text hover:bg-brand-primary hover:text-black'
@@ -1249,7 +1249,7 @@ export default function App() {
                           apiConfig.provider === "anthropic" ? "claude-3-5-sonnet-20240620" :
                           "model-name"
                         }
-                        className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-sm focus:border-brand-primary outline-none transition-all"
+                        className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-base focus:border-brand-primary outline-none transition-all"
                       />
                       
                       {apiConfig.provider === "gemini" && (
@@ -1264,7 +1264,7 @@ export default function App() {
                               key={m.id}
                               type="button"
                               onClick={() => setApiConfig({...apiConfig, modelName: m.id})}
-                              className={`text-[9px] px-2 py-1 rounded border transition-all ${
+                              className={`text-xs px-2 py-1 rounded border transition-all ${
                                 apiConfig.modelName === m.id 
                                   ? "bg-brand-primary/20 border-brand-primary text-brand-primary" 
                                   : "bg-brand-surface border-brand-border text-muted hover:border-brand-primary/50"
@@ -1289,7 +1289,7 @@ export default function App() {
                               key={m.id}
                               type="button"
                               onClick={() => setApiConfig({...apiConfig, modelName: m.id})}
-                              className={`text-[9px] px-2 py-1 rounded border transition-all ${
+                              className={`text-xs px-2 py-1 rounded border transition-all ${
                                 apiConfig.modelName === m.id 
                                   ? "bg-brand-primary/20 border-brand-primary text-brand-primary" 
                                   : "bg-brand-surface border-brand-border text-muted hover:border-brand-primary/50"
@@ -1314,7 +1314,7 @@ export default function App() {
                               key={m.id}
                               type="button"
                               onClick={() => setApiConfig({...apiConfig, modelName: m.id})}
-                              className={`text-[9px] px-2 py-1 rounded border transition-all ${
+                              className={`text-xs px-2 py-1 rounded border transition-all ${
                                 apiConfig.modelName === m.id 
                                   ? "bg-brand-primary/20 border-brand-primary text-brand-primary" 
                                   : "bg-brand-surface border-brand-border text-muted hover:border-brand-primary/50"
@@ -1339,7 +1339,7 @@ export default function App() {
                               key={m.id}
                               type="button"
                               onClick={() => setApiConfig({...apiConfig, modelName: m.id})}
-                              className={`text-[9px] px-2 py-1 rounded border transition-all ${
+                              className={`text-xs px-2 py-1 rounded border transition-all ${
                                 apiConfig.modelName === m.id 
                                   ? "bg-brand-primary/20 border-brand-primary text-brand-primary" 
                                   : "bg-brand-surface border-brand-border text-muted hover:border-brand-primary/50"
@@ -1351,7 +1351,7 @@ export default function App() {
                         </div>
                       )}
                       {testStatus.message && (
-                        <p className={`text-[9px] mt-1 font-medium animate-in fade-in slide-in-from-top-1 duration-200 ${testStatus.success ? 'text-green-500' : 'text-red-500'}`}>
+                        <p className={`text-xs mt-1 font-medium animate-in fade-in slide-in-from-top-1 duration-200 ${testStatus.success ? 'text-green-500' : 'text-red-500'}`}>
                           {testStatus.message}
                         </p>
                       )}
@@ -1361,7 +1361,7 @@ export default function App() {
                   {/* Image Compression Settings */}
                   <div className="space-y-4 pt-4 border-t border-brand-border">
                     <div className="flex items-center justify-between">
-                      <label className="text-[10px] font-bold text-muted uppercase tracking-widest">{t.imageCompression}</label>
+                      <label className="text-sm font-bold text-muted uppercase tracking-widest">{t.imageCompression}</label>
                       <button 
                         onClick={() => setCompressionConfig({...compressionConfig, enabled: !compressionConfig.enabled})}
                         className={`w-10 h-5 rounded-full transition-colors relative ${compressionConfig.enabled ? 'bg-brand-primary' : 'bg-brand-border'}`}
@@ -1374,8 +1374,8 @@ export default function App() {
                       <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
                         <div className="space-y-2">
                           <div className="flex justify-between">
-                            <label className="text-[10px] font-bold text-muted uppercase tracking-widest">{t.compressionQuality}</label>
-                            <span className="text-[10px] font-mono text-brand-primary">{Math.round(compressionConfig.quality * 100)}%</span>
+                            <label className="text-sm font-bold text-muted uppercase tracking-widest">{t.compressionQuality}</label>
+                            <span className="text-sm font-mono text-brand-primary">{Math.round(compressionConfig.quality * 100)}%</span>
                           </div>
                           <input 
                             type="range"
@@ -1397,8 +1397,8 @@ export default function App() {
 
                         <div className="space-y-2">
                           <div className="flex justify-between">
-                            <label className="text-[10px] font-bold text-muted uppercase tracking-widest">{t.maxDimension}</label>
-                            <span className="text-[10px] font-mono text-brand-primary">{compressionConfig.maxDimension}px</span>
+                            <label className="text-sm font-bold text-muted uppercase tracking-widest">{t.maxDimension}</label>
+                            <span className="text-sm font-mono text-brand-primary">{compressionConfig.maxDimension}px</span>
                           </div>
                           <input 
                             type="range"
@@ -1420,8 +1420,8 @@ export default function App() {
 
                         <div className="space-y-2">
                           <div className="flex justify-between">
-                            <label className="text-[10px] font-bold text-muted uppercase tracking-widest">{t.historyCapacity}</label>
-                            <span className="text-[10px] font-mono text-brand-primary">{compressionConfig.historyCapacity}</span>
+                            <label className="text-sm font-bold text-muted uppercase tracking-widest">{t.historyCapacity}</label>
+                            <span className="text-sm font-mono text-brand-primary">{compressionConfig.historyCapacity}</span>
                           </div>
                           <input 
                             type="range"
@@ -1442,10 +1442,10 @@ export default function App() {
                         </div>
                       </div>
                     )}
-                    <p className="text-[10px] text-dim leading-relaxed italic">
+                    <p className="text-sm text-dim leading-relaxed">
                       {t.compressionTip}
                     </p>
-                    <p className="text-[10px] text-dim leading-relaxed italic">
+                    <p className="text-sm text-dim leading-relaxed">
                       {t.historyCapacityTip}
                     </p>
                   </div>
@@ -1457,12 +1457,12 @@ export default function App() {
                         localStorage.setItem("director_compression_config", JSON.stringify(compressionConfig));
                         setShowSettings(false);
                       }}
-                      className="w-full py-3 rounded-lg bg-brand-primary text-black text-xs font-bold hover:bg-brand-primary/90 transition-all flex items-center justify-center gap-2"
+                      className="w-full py-3 rounded-lg bg-brand-primary text-black text-sm font-bold hover:bg-brand-primary/90 transition-all flex items-center justify-center gap-2"
                     >
                       <Check className="w-4 h-4" />
                       {t.saveSettings}
                     </button>
-                    <p className="text-[10px] text-dim text-center mt-4 italic">
+                    <p className="text-sm text-dim text-center mt-4">
                       {t.apiTip}
                     </p>
                   </div>
@@ -1503,7 +1503,7 @@ export default function App() {
                   {/* User Templates */}
                   {userTemplates.length > 0 && (
                     <div className="space-y-3">
-                      <h3 className="text-[10px] font-bold text-brand-text uppercase tracking-widest px-1">{t.userTemplates}</h3>
+                      <h3 className="text-sm font-bold text-brand-text uppercase tracking-widest px-1">{t.userTemplates}</h3>
                       <div className="grid grid-cols-1 gap-3">
                         {userTemplates.map(tpl => (
                           <div key={tpl.id} className="relative group">
@@ -1512,14 +1512,14 @@ export default function App() {
                               className="w-full bg-brand-primary/5 border border-brand-primary/20 rounded-lg p-4 hover:border-brand-primary transition-all text-left overflow-hidden"
                             >
                               <div className="flex items-center justify-between mb-2">
-                                <h4 className="text-xs font-bold text-brand-text">
+                                <h4 className="text-sm font-bold text-brand-text">
                                   {tpl.title.zh}
                                 </h4>
-                                <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-brand-primary/10 text-brand-primary border border-brand-primary/20">
+                                <span className="text-xs px-1.5 py-0.5 rounded-full bg-brand-primary/10 text-brand-primary border border-brand-primary/20">
                                   {t.templateCategories[tpl.category as keyof typeof t.templateCategories]}
                                 </span>
                               </div>
-                              <p className="text-[10px] text-muted line-clamp-2 italic">
+                              <p className="text-sm text-muted line-clamp-2">
                                 {tpl.concept}
                               </p>
                             </button>
@@ -1545,7 +1545,7 @@ export default function App() {
 
                   {Object.entries(t.templateCategories).map(([catKey, catLabel]) => (
                     <div key={catKey} className="space-y-3">
-                      <h3 className="text-[10px] font-bold text-dim uppercase tracking-widest px-1">{catLabel}</h3>
+                      <h3 className="text-sm font-bold text-dim uppercase tracking-widest px-1">{catLabel}</h3>
                       <div className="grid grid-cols-1 gap-3">
                         {PROMPT_TEMPLATES.filter(tpl => tpl.category === catKey).map(tpl => (
                           <button
@@ -1553,10 +1553,10 @@ export default function App() {
                             onClick={() => useTemplate(tpl)}
                             className="group bg-[var(--input-bg)]/40 border border-brand-border rounded-lg p-4 hover:border-brand-primary/50 transition-all text-left relative overflow-hidden"
                           >
-                            <h4 className="text-xs font-bold text-main group-hover:text-brand-primary mb-2 transition-colors">
+                            <h4 className="text-sm font-bold text-main group-hover:text-brand-primary mb-2 transition-colors">
                               {uiLang === "zh" ? tpl.title.zh : tpl.title.en}
                             </h4>
-                            <p className="text-[10px] text-muted line-clamp-2 italic">
+                            <p className="text-sm text-muted line-clamp-2">
                               {tpl.concept}
                             </p>
                             <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1604,7 +1604,7 @@ export default function App() {
                             setHistory([]);
                           }
                         }}
-                        className="text-[10px] font-bold text-red-500 hover:bg-red-500/10 px-2 py-1 rounded transition-colors"
+                        className="text-sm font-bold text-red-500 hover:bg-red-500/10 px-2 py-1 rounded transition-colors"
                       >
                         {t.clearHistory}
                       </button>
@@ -1618,7 +1618,7 @@ export default function App() {
                   {history.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-dim gap-4">
                       <History className="w-12 h-12" />
-                      <p className="font-mono text-xs uppercase tracking-widest">{t.noHistory}</p>
+                      <p className="font-mono text-sm uppercase tracking-widest">{t.noHistory}</p>
                     </div>
                   ) : (
                     history.map(item => (
@@ -1628,7 +1628,7 @@ export default function App() {
                         className="group bg-[var(--input-bg)]/40 border border-brand-border rounded-lg p-4 hover:border-brand-primary/50 transition-all cursor-pointer relative overflow-hidden"
                       >
                         <div className="flex justify-between items-start mb-2">
-                          <span className="text-[10px] font-mono text-muted">
+                          <span className="text-sm font-mono text-muted">
                             {new Date(item.timestamp).toLocaleString(uiLang === "zh" ? "zh-CN" : "en-US")}
                           </span>
                           <button 
@@ -1638,28 +1638,28 @@ export default function App() {
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
-                        <p className="text-xs text-main line-clamp-2 mb-3 font-medium">
+                        <p className="text-sm text-main line-clamp-2 mb-3 font-medium">
                           {item.userInput || (uiLang === "zh" ? "[图片输入]" : "[Image Input]")}
                         </p>
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
-                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-brand-primary/10 text-brand-text border border-brand-primary/20">
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-brand-primary/10 text-brand-text border border-brand-primary/20">
                               {item.model}
                             </span>
-                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-brand-bg text-muted border border-brand-border">
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-brand-bg text-muted border border-brand-border">
                               {item.language}
                             </span>
                           </div>
                           <button 
                             onClick={(e) => importPromptToInput(item.result.mainPrompt, e)}
-                            className="flex items-center gap-1 text-[9px] font-bold text-brand-text hover:bg-brand-primary hover:text-black px-2 py-1 rounded border border-brand-primary/30 transition-all"
+                            className="flex items-center gap-1 text-xs font-bold text-brand-text hover:bg-brand-primary hover:text-black px-2 py-1 rounded border border-brand-primary/30 transition-all"
                           >
                             <Sparkles className="w-2.5 h-2.5" />
                             {t.importPrompt}
                           </button>
                           <button 
                             onClick={(e) => { e.stopPropagation(); handleShare(item.result); }}
-                            className="flex items-center gap-1 text-[9px] font-bold text-muted hover:text-brand-text px-2 py-1 rounded border border-brand-border transition-all"
+                            className="flex items-center gap-1 text-xs font-bold text-muted hover:text-brand-text px-2 py-1 rounded border border-brand-border transition-all"
                             title={t.sharePrompt}
                           >
                             <Share2 className="w-2.5 h-2.5" />
@@ -1682,7 +1682,7 @@ export default function App() {
           <div className="flex bg-brand-surface border border-brand-border rounded p-1 self-start">
             <button
               onClick={() => { setActiveTab("director"); setError(null); setReverseError(null); }}
-              className={`px-4 py-1.5 rounded text-[10px] font-bold transition-all flex items-center gap-2 ${
+              className={`px-4 py-1.5 rounded text-sm font-bold transition-all flex items-center gap-2 ${
                 activeTab === "director" 
                   ? "bg-brand-primary text-black shadow-sm" 
                   : "text-muted hover:text-main"
@@ -1693,7 +1693,7 @@ export default function App() {
             </button>
             <button
               onClick={() => { setActiveTab("reverse"); setError(null); setReverseError(null); }}
-              className={`px-4 py-1.5 rounded text-[10px] font-bold transition-all flex items-center gap-2 ${
+              className={`px-4 py-1.5 rounded text-sm font-bold transition-all flex items-center gap-2 ${
                 activeTab === "reverse" 
                   ? "bg-brand-primary text-black shadow-sm" 
                   : "text-muted hover:text-main"
@@ -1722,7 +1722,7 @@ export default function App() {
               </div>
               <button 
                 onClick={handleClearAll}
-                className="flex items-center gap-1 text-[10px] font-bold text-muted hover:text-red-500 transition-colors"
+                className="flex items-center gap-1 text-sm font-bold text-muted hover:text-red-500 transition-colors"
               >
                 <RefreshCw className="w-3 h-3" />
                 {t.clearAll}
@@ -1738,7 +1738,7 @@ export default function App() {
                     <button
                       key={model}
                       onClick={() => setSelectedModel(model)}
-                      className={`py-3 px-4 rounded border text-sm font-bold transition-all ${
+                      className={`py-3 px-4 rounded border text-base font-bold transition-all ${
                         selectedModel === model 
                           ? "bg-brand-primary text-black border-brand-primary" 
                           : "bg-brand-surface text-muted border-brand-border hover:bg-brand-border/50"
@@ -1758,7 +1758,7 @@ export default function App() {
                     <button
                       key={lang}
                       onClick={() => setSelectedLanguage(lang)}
-                      className={`flex-1 py-2 px-4 rounded border text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                      className={`flex-1 py-2 px-4 rounded border text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                         selectedLanguage === lang 
                           ? "bg-brand-primary text-black border-brand-primary" 
                           : "bg-brand-surface text-muted border-brand-border hover:bg-brand-border/50"
@@ -1775,7 +1775,7 @@ export default function App() {
               <div className="space-y-3 relative">
                 <div className="flex items-center gap-2">
                   <label className="label-micro">{t.videoTechnique}</label>
-                  <span className="text-[10px] text-dim font-mono">{t.optional}</span>
+                  <span className="text-sm text-dim font-mono">{t.optional}</span>
                 </div>
                 
                 <div className="relative">
@@ -1787,12 +1787,12 @@ export default function App() {
                       {selectedTechnique ? (
                         <>
                           {React.createElement(techniqueOptions.find(opt => opt.id === selectedTechnique)?.icon || Film, { className: "w-4 h-4 text-brand-primary" })}
-                          <span className="text-sm font-bold text-main">
+                          <span className="text-base font-bold text-main">
                             {t.techniques[selectedTechnique as keyof typeof t.techniques]}
                           </span>
                         </>
                       ) : (
-                        <span className="text-sm text-dim">{t.selectTechnique}</span>
+                        <span className="text-base text-dim">{t.selectTechnique}</span>
                       )}
                     </div>
                     <ChevronDown className={`w-4 h-4 text-muted group-hover:text-brand-primary transition-transform ${showTechniqueDropdown ? 'rotate-180' : ''}`} />
@@ -1819,7 +1819,7 @@ export default function App() {
                             className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-brand-primary/10 transition-colors text-left"
                           >
                             <div className="w-4 h-4 rounded-full border border-brand-border" />
-                            <span className="text-xs font-bold text-dim">{t.clearAll}</span>
+                            <span className="text-sm font-bold text-dim">{t.clearAll}</span>
                           </button>
                           <div className="h-[1px] bg-brand-border mx-2 my-1" />
                           {techniqueOptions.map((opt) => (
@@ -1834,7 +1834,7 @@ export default function App() {
                               }`}
                             >
                               <opt.icon className={`w-4 h-4 ${selectedTechnique === opt.id ? 'text-brand-primary' : 'text-muted'}`} />
-                              <span className="text-xs font-bold">
+                              <span className="text-sm font-bold">
                                 {t.techniques[opt.id as keyof typeof t.techniques]}
                               </span>
                             </button>
@@ -1850,7 +1850,7 @@ export default function App() {
               <div className="space-y-3 relative">
                 <div className="flex items-center gap-2">
                   <label className="label-micro">{t.visualStyle}</label>
-                  <span className="text-[10px] text-dim font-mono">{t.optional}</span>
+                  <span className="text-sm text-dim font-mono">{t.optional}</span>
                 </div>
                 
                 <div className="relative">
@@ -1862,7 +1862,7 @@ export default function App() {
                       {selectedVisualStyle ? (
                         <>
                           <Sparkles className="w-4 h-4 text-brand-primary" />
-                          <span className="text-sm font-bold text-main">
+                          <span className="text-base font-bold text-main">
                             {(() => {
                               for (const cat of Object.values(VISUAL_STYLES)) {
                                 const style = cat.styles.find(s => s.name.zh === selectedVisualStyle || s.name.en === selectedVisualStyle);
@@ -1873,7 +1873,7 @@ export default function App() {
                           </span>
                         </>
                       ) : (
-                        <span className="text-sm text-dim">{t.selectStyle}</span>
+                        <span className="text-base text-dim">{t.selectStyle}</span>
                       )}
                     </div>
                     <ChevronDown className={`w-4 h-4 text-muted group-hover:text-brand-primary transition-transform ${showVisualStyleDropdown ? 'rotate-180' : ''}`} />
@@ -1909,7 +1909,7 @@ export default function App() {
                                   className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-brand-primary/10 transition-colors text-left"
                                 >
                                   <Circle className="w-4 h-4 text-muted" />
-                                  <span className="text-xs font-bold text-dim">{t.clearAll}</span>
+                                  <span className="text-sm font-bold text-dim">{t.clearAll}</span>
                                 </button>
                                 <div className="h-[1px] bg-brand-border mx-2 my-1" />
                                 {Object.entries(VISUAL_STYLES).map(([key, cat]) => {
@@ -1923,7 +1923,7 @@ export default function App() {
                                       }`}
                                     >
                                       <Icon className={`w-4 h-4 ${activeVisualStyleCategory === key ? 'text-brand-primary' : 'text-muted'}`} />
-                                      <span className="text-xs font-bold">{cat.label[uiLang]}</span>
+                                      <span className="text-sm font-bold">{cat.label[uiLang]}</span>
                                     </button>
                                   );
                                 })}
@@ -1950,7 +1950,7 @@ export default function App() {
                                             : 'hover:bg-brand-primary/10 text-main'
                                         }`}
                                       >
-                                        <span className="text-xs font-medium">{style.name[uiLang]}</span>
+                                        <span className="text-sm font-medium">{style.name[uiLang]}</span>
                                       </button>
                                     </div>
                                   ))}
@@ -1958,7 +1958,7 @@ export default function App() {
                               ) : (
                                 <div className="h-full flex flex-col items-center justify-center text-dim opacity-50 space-y-2">
                                    <Sparkles className="w-8 h-8" />
-                                   <p className="text-[10px]">{t.selectStyle}</p>
+                                   <p className="text-sm">{t.selectStyle}</p>
                                 </div>
                               )}
                             </div>
@@ -1984,12 +1984,12 @@ export default function App() {
                                         <div className="w-8 h-8 rounded-lg bg-brand-primary/10 flex items-center justify-center shrink-0">
                                           <Info className="w-4 h-4 text-brand-primary" />
                                         </div>
-                                        <h4 className="text-[10px] font-black text-brand-primary uppercase tracking-[0.2em] line-clamp-1">
+                                        <h4 className="text-sm font-black text-brand-primary uppercase tracking-[0.2em] line-clamp-1">
                                           {uiLang === 'zh' ? '风格详情' : 'Style Details'}
                                         </h4>
                                       </div>
                                       <div className="h-[1px] bg-brand-border/50 w-full" />
-                                      <p className="text-xs leading-relaxed text-main/90 font-medium italic">
+                                      <p className="text-sm leading-relaxed text-main/90 font-medium">
                                         {hoveredStyleDesc[uiLang]}
                                       </p>
                                     </motion.div>
@@ -2013,7 +2013,7 @@ export default function App() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <label className="label-micro">{t.totalDuration}</label>
-                    <span className="text-[10px] text-dim font-mono">{t.optional}</span>
+                    <span className="text-sm text-dim font-mono">{t.optional}</span>
                   </div>
                   <button
                     onClick={() => setIsDurationEnabled(!isDurationEnabled)}
@@ -2044,10 +2044,10 @@ export default function App() {
                           value={totalDuration}
                           onChange={(e) => setTotalDuration(e.target.value)}
                           placeholder={t.durationPlaceholder}
-                          className="flex-1 bg-transparent border-none outline-none text-sm text-main font-mono"
+                          className="flex-1 bg-transparent border-none outline-none text-base text-main font-mono"
                           min="1"
                         />
-                        <span className="text-xs text-muted font-bold">{t.durationUnit}</span>
+                        <span className="text-sm text-muted font-bold">{t.durationUnit}</span>
                       </div>
                     </motion.div>
                   )}
@@ -2059,7 +2059,7 @@ export default function App() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <label className="label-micro">{t.shotCount}</label>
-                    <span className="text-[10px] text-dim font-mono">{t.optional}</span>
+                    <span className="text-sm text-dim font-mono">{t.optional}</span>
                   </div>
                   <button
                     onClick={() => setIsShotCountEnabled(!isShotCountEnabled)}
@@ -2088,7 +2088,7 @@ export default function App() {
                         <select
                           value={manualShotCount}
                           onChange={(e) => setManualShotCount(e.target.value)}
-                          className="flex-1 bg-transparent border-none outline-none text-sm text-main font-mono appearance-none"
+                          className="flex-1 bg-transparent border-none outline-none text-base text-main font-mono appearance-none"
                         >
                           {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
                             <option key={n} value={n.toString()} className="bg-brand-surface text-main">
@@ -2115,7 +2115,7 @@ export default function App() {
                         setNewTemplateCategory("cinematic");
                         setShowSaveTemplateModal(true);
                       }}
-                      className="text-[10px] text-brand-text hover:underline flex items-center gap-1"
+                      className="text-sm text-brand-text hover:underline flex items-center gap-1"
                     >
                       <Plus className="w-3 h-3" />
                       {t.saveAsTemplate}
@@ -2135,7 +2135,7 @@ export default function App() {
                     onChange={handleTextareaChange}
                     onScroll={handleScroll}
                     placeholder={t.placeholder}
-                    className="w-full p-3 bg-transparent border-none outline-none resize-y font-mono text-sm leading-relaxed text-transparent caret-brand-primary block"
+                    className="mention-textarea relative z-10"
                     style={{ height: '220px', minHeight: '100px', maxHeight: '900px' }}
                   />
                 </div>
@@ -2147,7 +2147,7 @@ export default function App() {
                   <label className="label-micro">{t.referenceAssets} ({images.length}/9)</label>
                   <button 
                     onClick={() => fileInputRef.current?.click()}
-                    className="text-[10px] text-brand-text hover:underline flex items-center gap-1"
+                    className="text-sm text-brand-text hover:underline flex items-center gap-1"
                   >
                     <ImageIcon className="w-3 h-3" />
                     {t.addImages}
@@ -2181,8 +2181,8 @@ export default function App() {
                         <ImageIcon className="w-6 h-6" />
                       </div>
                       <div className="text-center">
-                        <p className="text-xs font-bold uppercase tracking-widest">{t.dropImages}</p>
-                        <p className="text-[10px] opacity-60 mt-1">
+                        <p className="text-sm font-bold uppercase tracking-widest">{t.dropImages}</p>
+                        <p className="text-sm opacity-60 mt-1">
                           {uiLang === 'zh' ? '支持拖拽或点击上传 (最多9张)' : 'Drag & drop or click to upload (Max 9)'}
                         </p>
                       </div>
@@ -2219,7 +2219,7 @@ export default function App() {
                                   i === idx ? { ...item, keyword: val } : item
                                 ));
                               }}
-                              className="w-full bg-transparent text-[10px] text-muted focus:text-brand-primary outline-none text-center font-mono placeholder:opacity-50"
+                              className="w-full bg-transparent text-sm text-muted focus:text-brand-primary outline-none text-center font-mono placeholder:opacity-50"
                             />
                           </div>
                         </div>
@@ -2234,7 +2234,7 @@ export default function App() {
                           }`}
                         >
                           <Plus className="w-5 h-5" />
-                          <span className="text-[8px] font-bold uppercase">{t.addImages}</span>
+                          <span className="text-xs font-bold uppercase">{t.addImages}</span>
                         </button>
                       )}
                     </div>
@@ -2243,7 +2243,7 @@ export default function App() {
               </div>
 
               {error && (
-                <div className="text-red-500 text-xs font-mono bg-red-500/10 p-2 border border-red-500/20 rounded">
+                <div className="text-red-500 text-sm font-mono bg-red-500/10 p-2 border border-red-500/20 rounded">
                   {error}
                 </div>
               )}
@@ -2261,7 +2261,7 @@ export default function App() {
                         e.stopPropagation();
                         setIsGenerating(false);
                       }}
-                      className="ml-2 px-3 py-1 bg-red-500/20 hover:bg-red-500/40 text-red-500 rounded text-[10px] border border-red-500/30 transition-all font-bold"
+                      className="ml-2 px-3 py-1 bg-red-500/20 hover:bg-red-500/40 text-red-500 rounded text-sm border border-red-500/30 transition-all font-bold"
                     >
                       {t.stop}
                     </button>
@@ -2299,7 +2299,7 @@ export default function App() {
                       <button
                         key={mode}
                         onClick={() => setReverseMode(mode)}
-                        className={`flex-1 py-2 rounded text-[10px] font-bold transition-all flex items-center justify-center gap-2 ${
+                        className={`flex-1 py-2 rounded text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                           reverseMode === mode 
                             ? "bg-brand-border text-main shadow-sm" 
                             : "text-muted hover:text-dim"
@@ -2323,10 +2323,10 @@ export default function App() {
                         {reverseFile ? (
                           <div className="absolute inset-0 flex flex-col items-center justify-center bg-brand-surface">
                             <Video className="w-12 h-12 text-brand-primary mb-2" />
-                            <span className="text-xs font-bold text-main">视频已就绪 / Video Ready</span>
+                            <span className="text-sm font-bold text-main">视频已就绪 / Video Ready</span>
                             <button 
                               onClick={(e) => { e.stopPropagation(); setReverseFile(null); }}
-                              className="mt-4 px-3 py-1 bg-red-500/10 text-red-500 text-[10px] font-bold rounded hover:bg-red-500 hover:text-white transition-all"
+                              className="mt-4 px-3 py-1 bg-red-500/10 text-red-500 text-sm font-bold rounded hover:bg-red-500 hover:text-white transition-all"
                             >
                               移除 / Remove
                             </button>
@@ -2337,8 +2337,8 @@ export default function App() {
                               <Upload className="w-8 h-8 text-muted group-hover:text-brand-primary" />
                             </div>
                             <div className="text-center">
-                              <p className="text-sm font-bold text-main mb-1">{t.uploadFile}</p>
-                              <p className="text-[10px] text-dim">{t.dropVideo}</p>
+                              <p className="text-base font-bold text-main mb-1">{t.uploadFile}</p>
+                              <p className="text-sm text-dim">{t.dropVideo}</p>
                             </div>
                           </>
                         )}
@@ -2360,7 +2360,7 @@ export default function App() {
                             value={reverseUrl}
                             onChange={(e) => setReverseUrl(e.target.value)}
                             placeholder={reverseMode === "youtube" ? t.pasteYoutube : t.pasteVideoUrl}
-                            className="flex-1 bg-transparent border-none outline-none text-sm text-main"
+                            className="flex-1 bg-transparent border-none outline-none text-base text-main"
                           />
                         </div>
                       </div>
@@ -2375,7 +2375,7 @@ export default function App() {
                         <button
                           key={lang}
                           onClick={() => setSelectedLanguage(lang)}
-                          className={`flex-1 py-2 px-4 rounded border text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                          className={`flex-1 py-2 px-4 rounded border text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                             selectedLanguage === lang 
                               ? "bg-brand-primary text-black border-brand-primary" 
                               : "bg-brand-surface text-muted border-brand-border hover:bg-brand-border/50"
@@ -2392,14 +2392,14 @@ export default function App() {
                   <div className="flex flex-col gap-2 p-3 bg-brand-primary/5 border border-brand-primary/10 rounded-lg">
                     <div className="flex items-start gap-2">
                       <Info className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
-                      <p className="text-[10px] text-muted leading-relaxed">
+                      <p className="text-sm text-muted leading-relaxed">
                         {t.reverseTip}
                       </p>
                     </div>
                     {apiConfig.provider !== "gemini" && (
                       <div className="flex items-start gap-2 pt-2 border-t border-brand-primary/10">
                         <Sparkles className="w-3.5 h-3.5 text-brand-primary shrink-0 mt-0.5" />
-                        <p className="text-[9px] text-brand-text/80 leading-relaxed italic">
+                        <p className="text-xs text-brand-text/80 leading-relaxed">
                           {uiLang === "zh" 
                             ? "提示：视频反推功能在 Gemini 模型下效果最佳。当前模型可能无法处理视频文件。" 
                             : "Tip: Video reverse works best with Gemini models. Current provider may not support direct video file analysis."}
@@ -2409,7 +2409,7 @@ export default function App() {
                   </div>
 
                   {reverseError && (
-                    <div className="text-red-500 text-xs font-mono bg-red-500/10 p-2 border border-red-500/20 rounded">
+                    <div className="text-red-500 text-sm font-mono bg-red-500/10 p-2 border border-red-500/20 rounded">
                       {reverseError}
                     </div>
                   )}
@@ -2419,7 +2419,7 @@ export default function App() {
                   <button
                     onClick={handleReversePrompt}
                     disabled={isReversing || reverseSuccess}
-                    className={`w-full py-4 rounded-xl font-black text-sm tracking-widest flex items-center justify-center gap-3 transition-all shadow-lg ${
+                    className={`w-full py-4 rounded-xl font-black text-base tracking-widest flex items-center justify-center gap-3 transition-all shadow-lg ${
                       isReversing || reverseSuccess
                         ? "bg-brand-border text-muted cursor-not-allowed"
                         : "bg-brand-primary text-black hover:scale-[1.02] active:scale-[0.98] shadow-brand-primary/20"
@@ -2461,21 +2461,21 @@ export default function App() {
                 <div className="flex items-center gap-4">
                   <button 
                     onClick={() => copyToClipboard(result.mainPrompt)}
-                    className="flex items-center gap-1 text-[10px] font-bold text-muted hover:text-brand-text transition-colors"
+                    className="flex items-center gap-1 text-sm font-bold text-muted hover:text-brand-text transition-colors"
                   >
                     {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                     {copied ? t.copied : t.copyPrompt}
                   </button>
                   <button 
                     onClick={handleShare}
-                    className={`flex items-center gap-1 text-[10px] font-bold transition-colors ${shareStatus === 'success' ? 'text-green-500' : 'text-muted hover:text-brand-text'}`}
+                    className={`flex items-center gap-1 text-sm font-bold transition-colors ${shareStatus === 'success' ? 'text-green-500' : 'text-muted hover:text-brand-text'}`}
                   >
                     {shareStatus === 'success' ? <Check className="w-3 h-3" /> : <Share2 className="w-3 h-3" />}
                     {shareStatus === 'success' ? t.copied : t.sharePrompt}
                   </button>
                   <button 
                     onClick={handleDownload}
-                    className={`flex items-center gap-1 text-[10px] font-bold transition-colors ${downloadStatus === 'success' ? 'text-green-500' : 'text-muted hover:text-brand-text'}`}
+                    className={`flex items-center gap-1 text-sm font-bold transition-colors ${downloadStatus === 'success' ? 'text-green-500' : 'text-muted hover:text-brand-text'}`}
                   >
                     {downloadStatus === 'success' ? <CheckCircle2 className="w-3 h-3" /> : <Download className="w-3 h-3" />}
                     {downloadStatus === 'success' ? t.copied : t.downloadTxt}
@@ -2496,8 +2496,8 @@ export default function App() {
                       <Video className="w-10 h-10 text-muted" />
                     </div>
                     <div className="space-y-2">
-                       <p className="font-mono text-sm tracking-[0.3em] text-dim uppercase font-bold">{t.awaitingInput}</p>
-                       <p className="text-[10px] text-muted opacity-60 tracking-wider">
+                       <p className="font-mono text-base tracking-[0.3em] text-dim uppercase font-bold">{t.awaitingInput}</p>
+                       <p className="text-sm text-muted opacity-60 tracking-wider">
                          {uiLang === 'zh' ? '暂无生成指令' : 'No instructions yet'}
                        </p>
                     </div>
@@ -2543,7 +2543,7 @@ export default function App() {
                             initial={{ opacity: 0, y: 5 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -5 }}
-                            className="font-mono text-sm text-brand-text uppercase tracking-wider"
+                            className="font-mono text-base text-brand-text uppercase tracking-wider"
                           >
                             {getStageText()}
                           </motion.p>
@@ -2557,7 +2557,7 @@ export default function App() {
                           />
                         </div>
                       </div>
-                      <p className="text-[10px] text-dim font-mono uppercase tracking-[0.2em]">
+                      <p className="text-sm text-dim font-mono uppercase tracking-[0.2em]">
                         Director Engine Processing...
                       </p>
                     </div>
@@ -2575,7 +2575,7 @@ export default function App() {
                         <span className="label-micro">{t.scriptPreview}</span>
                         <div className="h-[1px] flex-1 bg-brand-border" />
                       </div>
-                      <div className="bg-[var(--input-bg)] p-6 rounded border border-brand-border font-mono text-sm leading-relaxed whitespace-pre-wrap selection:bg-brand-primary selection:text-black">
+                      <div className="bg-[var(--input-bg)] p-6 rounded border border-brand-border font-mono text-base leading-relaxed whitespace-pre-wrap selection:bg-brand-primary selection:text-black">
                         {result?.parameters.language === selectedLanguage 
                           ? result?.mainPrompt 
                           : result?.translation}
@@ -2589,7 +2589,7 @@ export default function App() {
                         <span className="label-micro">{t.translationRef}</span>
                         <div className="h-[1px] flex-1 bg-brand-border" />
                       </div>
-                      <div className="p-4 text-muted text-sm italic leading-relaxed">
+                      <div className="p-4 text-muted text-base leading-relaxed">
                         {result?.parameters.language === selectedLanguage 
                           ? result?.translation 
                           : result?.mainPrompt}
@@ -2600,21 +2600,21 @@ export default function App() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div className="bg-[var(--input-bg)] p-3 rounded border border-brand-border">
                         <p className="label-micro mb-1">{t.model}</p>
-                        <p className="text-xs font-bold text-brand-text">{result?.parameters.model}</p>
+                        <p className="text-sm font-bold text-brand-text">{result?.parameters.model}</p>
                       </div>
                       <div className="bg-[var(--input-bg)] p-3 rounded border border-brand-border">
                         <p className="label-micro mb-1">{t.duration}</p>
-                        <p className="text-xs font-bold">{result?.parameters.duration}</p>
+                        <p className="text-sm font-bold">{result?.parameters.duration}</p>
                       </div>
                       {result?.parameters.motionIntensity && (
                         <div className="bg-[var(--input-bg)] p-3 rounded border border-brand-border">
                           <p className="label-micro mb-1">{t.intensity}</p>
-                          <p className="text-xs font-bold">{result?.parameters.motionIntensity}</p>
+                          <p className="text-sm font-bold">{result?.parameters.motionIntensity}</p>
                         </div>
                       )}
                       <div className="bg-[var(--input-bg)] p-3 rounded border border-brand-border">
                         <p className="label-micro mb-1">{t.shots}</p>
-                        <p className="text-xs font-bold">{result?.parameters.shotCount}</p>
+                        <p className="text-sm font-bold">{result?.parameters.shotCount}</p>
                       </div>
                     </div>
 
@@ -2631,10 +2631,10 @@ export default function App() {
                             onClick={() => handleGenerate(`${userInput}\n\n[${s.category}] ${s.text}`)}
                             className="group flex flex-col items-start p-3 rounded-lg border border-brand-border bg-brand-surface hover:border-brand-primary hover:bg-brand-primary/5 transition-all text-left"
                           >
-                            <span className="text-[9px] font-bold uppercase tracking-tighter text-brand-primary mb-1 opacity-70 group-hover:opacity-100">
+                            <span className="text-xs font-bold uppercase tracking-tighter text-brand-primary mb-1 opacity-70 group-hover:opacity-100">
                               {s.category}
                             </span>
-                            <p className="text-[11px] text-muted group-hover:text-main leading-relaxed">
+                            <p className="text-sm text-muted group-hover:text-main leading-relaxed">
                               {s.text}
                             </p>
                           </button>
@@ -2656,8 +2656,8 @@ export default function App() {
               <Info className="w-5 h-5 text-brand-primary" />
             </div>
             <div className="space-y-1">
-              <p className="text-xs font-bold text-brand-text uppercase tracking-wider">{t.proTip}</p>
-              <p className="text-[11px] text-muted leading-relaxed">
+              <p className="text-sm font-bold text-brand-text uppercase tracking-wider">{t.proTip}</p>
+              <p className="text-sm text-muted leading-relaxed">
                 {selectedModel === "Seedance 2.0" ? t.seedanceTip : t.klingTip}
               </p>
             </div>
@@ -2690,25 +2690,25 @@ export default function App() {
               </div>
               <div className="p-6 space-y-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-muted uppercase tracking-widest">{t.templateName}</label>
+                  <label className="text-sm font-bold text-muted uppercase tracking-widest">{t.templateName}</label>
                   <input 
                     type="text"
                     value={newTemplateName}
                     onChange={(e) => setNewTemplateName(e.target.value)}
                     placeholder={uiLang === "zh" ? "输入模板名称..." : "Enter template name..."}
-                    className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-sm focus:border-brand-primary outline-none transition-all"
+                    className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-base focus:border-brand-primary outline-none transition-all"
                     autoFocus
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-muted uppercase tracking-widest">{uiLang === "zh" ? "选择分类" : "Select Category"}</label>
+                  <label className="text-sm font-bold text-muted uppercase tracking-widest">{uiLang === "zh" ? "选择分类" : "Select Category"}</label>
                   <div className="grid grid-cols-2 gap-2">
                     {Object.entries(t.templateCategories).map(([key, label]) => (
                       <button
                         key={key}
                         onClick={() => setNewTemplateCategory(key)}
-                        className={`px-3 py-2 rounded-lg border text-[10px] font-bold transition-all ${
+                        className={`px-3 py-2 rounded-lg border text-sm font-bold transition-all ${
                           newTemplateCategory === key 
                             ? "bg-brand-primary text-black border-brand-primary" 
                             : "bg-brand-surface text-muted border-brand-border hover:bg-brand-border/50"
@@ -2723,14 +2723,14 @@ export default function App() {
                 <div className="flex gap-3 pt-2">
                   <button 
                     onClick={() => setShowSaveTemplateModal(false)}
-                    className="flex-1 py-2.5 rounded-lg border border-brand-border text-xs font-bold hover:bg-brand-border/30 transition-all"
+                    className="flex-1 py-2.5 rounded-lg border border-brand-border text-sm font-bold hover:bg-brand-border/30 transition-all"
                   >
                     {t.cancel}
                   </button>
                   <button 
                     onClick={handleSaveTemplate}
                     disabled={!newTemplateName}
-                    className="flex-1 py-2.5 rounded-lg bg-brand-primary text-black text-xs font-bold hover:bg-brand-primary/90 disabled:opacity-50 transition-all"
+                    className="flex-1 py-2.5 rounded-lg bg-brand-primary text-black text-sm font-bold hover:bg-brand-primary/90 disabled:opacity-50 transition-all"
                   >
                     {t.save}
                   </button>
@@ -2744,22 +2744,22 @@ export default function App() {
       {/* Footer */}
       <footer className="py-4 border-t border-brand-border flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2 text-[10px] font-mono text-muted">
+          <div className="flex items-center gap-2 text-sm font-mono text-muted">
             <div className="w-1.5 h-1.5 rounded-full bg-brand-primary" />
             SEEDANCE {t.footerReady}
           </div>
-          <div className="flex items-center gap-2 text-[10px] font-mono text-muted">
+          <div className="flex items-center gap-2 text-sm font-mono text-muted">
             <div className="w-1.5 h-1.5 rounded-full bg-brand-primary" />
             KLING OMNI {t.footerReady}
           </div>
         </div>
         <div className="flex flex-col items-end gap-1">
           <div className="flex items-center gap-4">
-            <p className="text-[10px] font-mono text-dim">
+            <p className="text-sm font-mono text-dim">
               {t.footerDesign}
             </p>
           </div>
-          <p className="text-[10px] font-mono text-dim">
+          <p className="text-sm font-mono text-dim">
             {uiLang === 'zh' ? 'S06109力荐' : 'S06109 Recommended'}
           </p>
         </div>
@@ -2784,7 +2784,7 @@ export default function App() {
               <div className="p-5 border-b border-brand-border bg-brand-primary/10 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-brand-primary" />
-                  <span className="text-sm font-bold text-brand-text">Sunell市场部为视频创作而设计</span>
+                  <span className="text-base font-bold text-brand-text">Sunell市场部为视频创作而设计</span>
                 </div>
                 <button onClick={() => setShowApiKeyWarning(false)} className="text-muted hover:text-main transition-colors">
                   <X className="w-5 h-5" />
@@ -2799,7 +2799,7 @@ export default function App() {
                   <h3 className="text-lg font-bold text-main">
                     {uiLang === 'zh' ? '未检测到 API 密钥' : 'API Key Not Found'}
                   </h3>
-                  <p className="text-sm text-muted leading-relaxed">
+                  <p className="text-base text-muted leading-relaxed">
                     {uiLang === 'zh' 
                       ? '为了获得最佳的提示词优化体验，请先前往设置页面填入您的 API 密钥。' 
                       : 'To get the best prompt optimization experience, please go to settings and enter your API key first.'}
@@ -2812,7 +2812,7 @@ export default function App() {
                       setShowApiKeyWarning(false);
                       setShowSettings(true);
                     }}
-                    className="w-full py-3.5 rounded-xl bg-brand-primary text-black text-sm font-bold hover:bg-brand-primary/90 transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand-primary/20"
+                    className="w-full py-3.5 rounded-xl bg-brand-primary text-black text-base font-bold hover:bg-brand-primary/90 transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand-primary/20"
                   >
                     <SettingsIcon className="w-4 h-4" />
                     {uiLang === 'zh' ? '立即前往设置' : 'Go to Settings Now'}
@@ -2821,7 +2821,7 @@ export default function App() {
                   <div className="flex gap-3">
                     <button 
                       onClick={() => setShowApiKeyWarning(false)}
-                      className="flex-1 py-3 rounded-xl border border-brand-border text-xs font-bold text-muted hover:bg-brand-border/30 transition-all"
+                      className="flex-1 py-3 rounded-xl border border-brand-border text-sm font-bold text-muted hover:bg-brand-border/30 transition-all"
                     >
                       {uiLang === 'zh' ? '暂时关闭' : 'Close for Now'}
                     </button>
@@ -2830,7 +2830,7 @@ export default function App() {
                         localStorage.setItem("director_api_warning_dismissed", new Date().toDateString());
                         setShowApiKeyWarning(false);
                       }}
-                      className="flex-1 py-3 rounded-xl border border-brand-border text-xs font-bold text-muted hover:bg-brand-border/30 transition-all"
+                      className="flex-1 py-3 rounded-xl border border-brand-border text-sm font-bold text-muted hover:bg-brand-border/30 transition-all"
                     >
                       {uiLang === 'zh' ? '今日不再提醒' : "Don't remind me today"}
                     </button>
@@ -2861,7 +2861,7 @@ export default function App() {
               <div className="p-5 border-b border-brand-border bg-brand-primary/10 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-brand-primary" />
-                  <span className="text-sm font-bold text-brand-text">Sunell市场部为视频创作而设计</span>
+                  <span className="text-base font-bold text-brand-text">Sunell市场部为视频创作而设计</span>
                 </div>
                 <button onClick={() => setShowApiKeyWarning(false)} className="text-muted hover:text-main transition-colors">
                   <X className="w-5 h-5" />
@@ -2876,7 +2876,7 @@ export default function App() {
                   <h3 className="text-lg font-bold text-main">
                     {uiLang === 'zh' ? '未检测到 API 密钥' : 'API Key Not Found'}
                   </h3>
-                  <p className="text-sm text-muted leading-relaxed">
+                  <p className="text-base text-muted leading-relaxed">
                     {uiLang === 'zh' 
                       ? '为了获得最佳的提示词优化体验，请先前往设置页面填入您的 API 密钥。' 
                       : 'To get the best prompt optimization experience, please go to settings and enter your API key first.'}
@@ -2889,7 +2889,7 @@ export default function App() {
                       setShowApiKeyWarning(false);
                       setShowSettings(true);
                     }}
-                    className="w-full py-3.5 rounded-xl bg-brand-primary text-black text-sm font-bold hover:bg-brand-primary/90 transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand-primary/20"
+                    className="w-full py-3.5 rounded-xl bg-brand-primary text-black text-base font-bold hover:bg-brand-primary/90 transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand-primary/20"
                   >
                     <SettingsIcon className="w-4 h-4" />
                     {uiLang === 'zh' ? '立即前往设置' : 'Go to Settings Now'}
@@ -2898,7 +2898,7 @@ export default function App() {
                   <div className="flex gap-3">
                     <button 
                       onClick={() => setShowApiKeyWarning(false)}
-                      className="flex-1 py-3 rounded-xl border border-brand-border text-xs font-bold text-muted hover:bg-brand-border/30 transition-all"
+                      className="flex-1 py-3 rounded-xl border border-brand-border text-sm font-bold text-muted hover:bg-brand-border/30 transition-all"
                     >
                       {uiLang === 'zh' ? '暂时关闭' : 'Close for Now'}
                     </button>
@@ -2907,7 +2907,7 @@ export default function App() {
                         localStorage.setItem("director_api_warning_dismissed", new Date().toDateString());
                         setShowApiKeyWarning(false);
                       }}
-                      className="flex-1 py-3 rounded-xl border border-brand-border text-xs font-bold text-muted hover:bg-brand-border/30 transition-all"
+                      className="flex-1 py-3 rounded-xl border border-brand-border text-sm font-bold text-muted hover:bg-brand-border/30 transition-all"
                     >
                       {uiLang === 'zh' ? '今日不再提醒' : "Don't remind me today"}
                     </button>
@@ -2960,7 +2960,7 @@ export default function App() {
                 >
                   <ZoomOut className="w-5 h-5" />
                 </button>
-                <div className="w-12 text-center font-mono text-xs text-white font-bold">
+                <div className="w-12 text-center font-mono text-sm text-white font-bold">
                   {Math.round(zoomLevel * 100)}%
                 </div>
                 <button 
@@ -2988,7 +2988,7 @@ export default function App() {
                 </button>
               </div>
               
-              <p className="text-white/40 text-[10px] font-mono uppercase tracking-widest">
+              <p className="text-white/40 text-sm font-mono uppercase tracking-widest">
                 {uiLang === 'zh' ? '滚动滚轮或使用按钮缩放' : 'Scroll or use buttons to zoom'}
               </p>
             </motion.div>
