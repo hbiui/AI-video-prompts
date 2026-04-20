@@ -52,6 +52,23 @@ import {
   Circle
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { 
   generateVideoPrompt, 
   reverseVideoPrompt,
@@ -88,6 +105,73 @@ interface HistoryItem {
   totalDuration?: number;
   images: ImageObject[];
   result: PromptResult;
+}
+
+function SortableImage({ id, url, keyword, onRemove, onDoubleClick, onKeywordChange, uiLang }: { 
+  id: string; 
+  url: string; 
+  keyword: string; 
+  onRemove: () => void; 
+  onDoubleClick: () => void;
+  onKeywordChange: (val: string) => void;
+  uiLang: Language;
+  key?: React.Key;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition: transition || undefined,
+    zIndex: isDragging ? 20 : 0,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style}
+      className={`relative aspect-square rounded-lg border border-brand-border overflow-hidden group bg-brand-bg flex flex-col cursor-grab active:cursor-grabbing ${isDragging ? 'shadow-2xl ring-2 ring-brand-primary/50' : ''}`}
+      {...attributes}
+      {...listeners}
+      onDoubleClick={onDoubleClick}
+    >
+      <div className="relative flex-1 min-h-0">
+        <img src={url} alt="ref" className="w-full h-full object-cover pointer-events-none" />
+        <button 
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          className="absolute top-1 right-1 bg-black/80 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+        >
+          <X className="w-2.5 h-2.5 text-white" />
+        </button>
+      </div>
+      <div 
+        className="bg-[var(--input-bg)]/90 p-1.5 border-t border-brand-border shrink-0"
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <input 
+          type="text"
+          placeholder={`@${uiLang === "zh" ? "关键词" : "tag"}`}
+          value={keyword}
+          onChange={(e) => {
+            const val = e.target.value.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, "");
+            onKeywordChange(val);
+          }}
+          className="w-full bg-transparent text-sm text-muted focus:text-brand-primary outline-none text-center font-mono placeholder:opacity-50"
+        />
+      </div>
+    </div>
+  );
 }
 
 export default function App() {
@@ -130,7 +214,7 @@ export default function App() {
   const [providerConfigs, setProviderConfigs] = useState<Record<string, Partial<ApiConfig>>>({
     gemini: { apiKey: "", modelName: "gemini-3.1-pro-preview" },
     openai: { apiKey: "", modelName: "gpt-4o", baseUrl: "https://api.openai.com/v1" },
-    doubao: { apiKey: "", modelName: "Doubao-pro-32k", baseUrl: "https://ark.cn-beijing.volces.com/api/v3" },
+    doubao: { apiKey: "", modelName: "doubao-seed-2-0-pro-260215", baseUrl: "https://ark.cn-beijing.volces.com/api/v3" },
     anthropic: { apiKey: "", modelName: "claude-3-5-sonnet-20240620", baseUrl: "https://api.anthropic.com/v1" },
     custom: { apiKey: "", modelName: "", baseUrl: "" }
   });
@@ -141,6 +225,31 @@ export default function App() {
     historyCapacity: 10
   });
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setImages((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  }
+
   const [newTemplateName, setNewTemplateName] = useState("");
   const [newTemplateCategory, setNewTemplateCategory] = useState<string>("cinematic");
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
@@ -437,7 +546,7 @@ export default function App() {
       modelName: config.modelName || (
         newProvider === "gemini" ? "gemini-3.1-pro-preview" :
         newProvider === "openai" ? "gpt-4o" :
-        newProvider === "doubao" ? "Doubao-pro-32k" :
+        newProvider === "doubao" ? "doubao-seed-2-0-pro-260215" :
         newProvider === "anthropic" ? "claude-3-5-sonnet-20240620" : ""
       )
     });
@@ -673,8 +782,8 @@ export default function App() {
     }
   };
 
-  const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
+  const removeImage = (id: string) => {
+    setImages(prev => prev.filter(img => img.id !== id));
   };
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -1247,7 +1356,7 @@ export default function App() {
                         placeholder={
                           apiConfig.provider === "gemini" ? "gemini-3.1-pro-preview" :
                           apiConfig.provider === "openai" ? "gpt-4o" :
-                          apiConfig.provider === "doubao" ? "Doubao-pro-32k" :
+                          apiConfig.provider === "doubao" ? "doubao-seed-2-0-pro-260215" :
                           apiConfig.provider === "anthropic" ? "claude-3-5-sonnet-20240620" :
                           "model-name"
                         }
@@ -1330,12 +1439,9 @@ export default function App() {
                       {apiConfig.provider === "doubao" && (
                         <div className="flex flex-wrap gap-1.5 mt-2">
                           {[
-                            { name: "Pro 128k", id: "Doubao-pro-128k" },
-                            { name: "Pro 32k", id: "Doubao-pro-32k" },
-                            { name: "Lite 128k", id: "Doubao-lite-128k" },
-                            { name: "Vision Pro", id: "Doubao-vision-pro" },
-                            { name: "Seed 2.0 Pro", id: "Doubao-Seed-2.0-pro" },
-                            { name: "Seed 2.0 Lite", id: "Doubao-Seed-2.0-lite" }
+                            { name: "Seed 2.0 Pro", id: "doubao-seed-2-0-pro-260215" },
+                            { name: "Seed 2.0 Lite", id: "doubao-seed-2-0-lite-260215" },
+                            { name: "Seed 2.0 Mini", id: "doubao-seed-2-0-mini-260215" }
                           ].map(m => (
                             <button
                               key={m.id}
@@ -2190,56 +2296,51 @@ export default function App() {
                       </div>
                     </button>
                   ) : (
-                    <div className="grid grid-cols-5 gap-2">
-                      {images.map((img, idx) => (
-                        <div 
-                          key={img.id || idx} 
-                          className="relative aspect-square rounded-lg border border-brand-border overflow-hidden group bg-brand-bg flex flex-col cursor-zoom-in"
-                          onDoubleClick={() => {
-                            setPreviewImage(img.url);
-                            setZoomLevel(1);
-                          }}
-                          title={uiLang === 'zh' ? '双击放大预览' : 'Double click to zoom'}
-                        >
-                          <div className="relative flex-1 min-h-0">
-                            <img src={img.url} alt="ref" className="w-full h-full object-cover pointer-events-none" />
-                            <button 
-                              onClick={() => removeImage(idx)}
-                              className="absolute top-1 right-1 bg-black/80 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                            >
-                              <X className="w-2.5 h-2.5 text-white" />
-                            </button>
-                          </div>
-                          <div className="bg-[var(--input-bg)]/90 p-1.5 border-t border-brand-border shrink-0">
-                            <input 
-                              type="text"
-                              placeholder={`@${uiLang === "zh" ? "关键词" : "tag"}`}
-                              value={img.keyword || ""}
-                              onChange={(e) => {
-                                const val = e.target.value.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, "");
-                                setImages(prev => prev.map((item, i) => 
-                                  i === idx ? { ...item, keyword: val } : item
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <SortableContext 
+                        items={images}
+                        strategy={rectSortingStrategy}
+                      >
+                        <div className="grid grid-cols-5 gap-2">
+                          {images.map((img) => (
+                            <SortableImage 
+                              key={img.id}
+                              id={img.id}
+                              url={img.url}
+                              keyword={img.keyword || ""}
+                              uiLang={uiLang}
+                              onRemove={() => removeImage(img.id)}
+                              onDoubleClick={() => {
+                                setPreviewImage(img.url);
+                                setZoomLevel(1);
+                              }}
+                              onKeywordChange={(val) => {
+                                setImages(prev => prev.map((item) => 
+                                  item.id === img.id ? { ...item, keyword: val } : item
                                 ));
                               }}
-                              className="w-full bg-transparent text-sm text-muted focus:text-brand-primary outline-none text-center font-mono placeholder:opacity-50"
                             />
-                          </div>
+                          ))}
+                          {images.length < 9 && (
+                            <button 
+                              onClick={() => fileInputRef.current?.click()}
+                              className={`aspect-square rounded-lg border-2 border-dashed transition-all flex flex-col items-center justify-center gap-1 ${
+                                isDragging 
+                                  ? "border-brand-primary bg-brand-primary/10 text-brand-text" 
+                                  : "border-brand-border bg-[var(--input-bg)]/20 text-dim hover:border-brand-primary/50 hover:text-muted"
+                              }`}
+                            >
+                              <Plus className="w-5 h-5" />
+                              <span className="text-xs font-bold uppercase">{t.addImages}</span>
+                            </button>
+                          )}
                         </div>
-                      ))}
-                      {images.length < 9 && (
-                        <button 
-                          onClick={() => fileInputRef.current?.click()}
-                          className={`aspect-square rounded-lg border-2 border-dashed transition-all flex flex-col items-center justify-center gap-1 ${
-                            isDragging 
-                              ? "border-brand-primary bg-brand-primary/10 text-brand-text" 
-                              : "border-brand-border bg-[var(--input-bg)]/20 text-dim hover:border-brand-primary/50 hover:text-muted"
-                          }`}
-                        >
-                          <Plus className="w-5 h-5" />
-                          <span className="text-xs font-bold uppercase">{t.addImages}</span>
-                        </button>
-                      )}
-                    </div>
+                      </SortableContext>
+                    </DndContext>
                   )}
                 </div>
               </div>
