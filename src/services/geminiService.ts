@@ -768,3 +768,133 @@ export async function reverseVideoPrompt(
     throw new Error(formatApiError(error, apiConfig?.provider || "Gemini"));
   }
 }
+
+export async function suggestContinuation(
+  partialInput: string,
+  language: LanguageType,
+  apiConfig?: { provider: string; apiKey: string; baseUrl?: string; modelName?: string }
+): Promise<string[]> {
+  const systemInstruction = `你是一位电影导演和创意编剧助手。
+用户的输入是一个视频故事脚本的开头。
+你的任务是：**紧接**用户输入的最后一个字，提供 3 个后续发展的**续写建议**。
+
+### 要求：
+1. **真实续写**：建议必须直接承接并延续用户输入的逻辑和语境。千万不要在建议中重复用户已输入的内容。
+2. **场景连贯**：确保续写内容与已有的画面感一致，风格要统一。
+3. **字数控制**：每个建议控制在 15-30 个字左右，短小精悍。
+4. **语言**：必须使用与用户输入一致的语言（${language === "Chinese" ? "中文" : "英文"}）。
+5. **格式**：返回 JSON 对象，格式为 {"suggestions": ["建议1", "建议2", "建议3"]}。不要包含任何标记、反引号或多余文字。`;
+
+  const userPrompt = `用户当前输入的文本（请紧接此处后续写）：
+"${partialInput}"
+
+请直接提供 3 个后续发展的续写建议，每个建议应紧密承接上述文本。`;
+
+  try {
+    const provider = apiConfig?.provider || "gemini";
+    const apiKey = apiConfig?.apiKey;
+    const baseUrl = apiConfig?.baseUrl;
+    const modelName = apiConfig?.modelName;
+
+    // 1. Gemini Implementation
+    if (provider === "gemini" || !apiKey) {
+      const requestOptions: any = { customFetch: universalFetch };
+      const client = apiKey ? new GoogleGenAI({ apiKey, ...requestOptions }) : getAiClient();
+      const modelToUse = modelName || "gemini-3-flash-preview";
+
+      const response = await client.models.generateContent({
+        model: modelToUse,
+        contents: userPrompt,
+        config: {
+          systemInstruction,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              suggestions: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING }
+              }
+            },
+            required: ["suggestions"]
+          }
+        }
+      });
+
+      const text = response.text;
+      if (!text) return [];
+      const parsed = JSON.parse(text);
+      return parsed.suggestions || [];
+    } 
+    
+    // 2. Anthropic Implementation
+    if (provider === "anthropic") {
+      const apiBaseUrl = baseUrl || "https://api.anthropic.com/v1";
+      const endpoint = `${apiBaseUrl}/messages`;
+      const modelToUse = modelName || "claude-3-5-sonnet-20240620";
+
+      const response = await universalFetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01"
+        },
+        body: JSON.stringify({
+          model: modelToUse,
+          max_tokens: 1024,
+          system: systemInstruction + "\n\nIMPORTANT: Return ONLY a raw JSON object string like {\"suggestions\": [...]} without any markdown code blocks or extra text.",
+          messages: [
+            { role: "user", content: userPrompt }
+          ]
+        })
+      });
+
+      if (!response.ok) throw new Error(`Anthropic Suggestion Error: ${response.status}`);
+      const data = await response.json();
+      const content = data.content?.[0]?.text;
+      if (!content) return [];
+      
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : content;
+      const parsed = JSON.parse(jsonStr);
+      return parsed.suggestions || [];
+    }
+
+    // 3. OpenAI / Doubao / Custom Implementation
+    const apiBaseUrl = baseUrl || (provider === "openai" ? "https://api.openai.com/v1" : "");
+    const endpoint = `${apiBaseUrl}/chat/completions`;
+    const defaultModel = provider === "openai" ? "gpt-4o-mini" : "doubao-lite-32k";
+    const modelToUse = modelName || defaultModel;
+
+    const response = await universalFetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: modelToUse,
+        messages: [
+          { role: "system", content: systemInstruction },
+          { role: "user", content: userPrompt }
+        ],
+        response_format: { type: "json_object" }
+      })
+    });
+
+    if (!response.ok) throw new Error(`${provider.toUpperCase()} Suggestion Error: ${response.status}`);
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) return [];
+    
+    const parsed = JSON.parse(content);
+    if (parsed.suggestions && Array.isArray(parsed.suggestions)) return parsed.suggestions;
+    if (Array.isArray(parsed)) return parsed;
+    return Object.values(parsed).filter(v => typeof v === 'string').slice(0, 3) as string[];
+
+  } catch (error) {
+    console.error("Suggestion generation failed:", error);
+    return [];
+  }
+}

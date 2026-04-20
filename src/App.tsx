@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import logoImg from "./ico.png";
+import { SmartSuggest } from "./components/SmartSuggest";
 import { 
   Video, 
   Image as ImageIcon, 
@@ -78,6 +79,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { 
   generateVideoPrompt, 
   reverseVideoPrompt,
+  suggestContinuation,
   ModelType, 
   LanguageType, 
   PromptResult,
@@ -377,6 +379,9 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [resultViewTab, setResultViewTab] = useState<"main" | "translation">("main");
   const [logoError, setLogoError] = useState(false);
+  const [suggestedContinuations, setSuggestedContinuations] = useState<string[]>([]);
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [showApiKeyWarning, setShowApiKeyWarning] = useState(false);
@@ -477,6 +482,42 @@ export default function App() {
     setTimeout(() => {
       setYoutubeTestStatus(prev => ({ ...prev, message: null }));
     }, 3000);
+  };
+
+  const handleSuggestContinuation = async () => {
+    if (!userInput.trim()) return;
+    
+    setIsSuggesting(true);
+    // Don't clear previous if we want it to feel like "refreshing"
+    // setSuggestedContinuations([]); 
+    
+    try {
+      const suggestions = await suggestContinuation(userInput, selectedLanguage, apiConfig);
+      if (suggestions && suggestions.length > 0) {
+        setSuggestedContinuations(suggestions);
+        setShowSuggestions(true);
+      }
+    } catch (err) {
+      console.error("Suggestion error:", err);
+    } finally {
+      setIsSuggesting(false);
+    }
+  };
+
+  const applySuggestion = (suggestion: string) => {
+    // Append or intelligently merge
+    const trimmedInput = userInput.trim();
+    if (!trimmedInput) {
+      setUserInput(suggestion);
+    } else {
+      const lastChar = trimmedInput.slice(-1);
+      // If it's Chinese character, don't add space. If it's English/Alpha, add space.
+      const isChinese = /[\u4e00-\u9fa5]/.test(lastChar);
+      const isPunctuation = /[.,!?;:。，！？；：]/.test(lastChar);
+      const separator = (isChinese || isPunctuation) ? "" : " ";
+      setUserInput(prev => prev.trim() + separator + suggestion);
+    }
+    setShowSuggestions(false);
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -2478,7 +2519,7 @@ export default function App() {
                     </button>
                   )}
                 </div>
-                <div className="mention-container bg-[var(--input-bg)] border border-brand-border rounded focus-within:border-brand-primary transition-colors overflow-hidden">
+                <div className="mention-container bg-[var(--input-bg)] border border-brand-border rounded focus-within:border-brand-primary transition-colors">
                   <div 
                     ref={mirrorRef}
                     className="mention-mirror"
@@ -2493,6 +2534,17 @@ export default function App() {
                     placeholder={t.placeholder}
                     className="mention-textarea relative z-10"
                     style={{ height: '220px', minHeight: '100px', maxHeight: '900px' }}
+                  />
+                  <SmartSuggest 
+                    userInput={userInput}
+                    suggestedContinuations={suggestedContinuations}
+                    isSuggesting={isSuggesting}
+                    showSuggestions={showSuggestions}
+                    uiLang={uiLang}
+                    t={t}
+                    onSuggest={handleSuggestContinuation}
+                    onClose={() => setShowSuggestions(false)}
+                    onApply={applySuggestion}
                   />
                 </div>
               </div>

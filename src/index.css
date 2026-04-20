@@ -66,7 +66,7 @@
   }
 
   .mention-container {
-    @apply relative w-full border border-brand-border rounded focus-within:border-brand-primary transition-colors bg-[var(--input-bg)] overflow-hidden;
+    @apply relative w-full border border-brand-border rounded focus-within:border-brand-primary transition-colors bg-[var(--input-bg)];
   }
 
   .mention-mirror {
