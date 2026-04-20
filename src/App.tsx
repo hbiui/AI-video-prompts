@@ -36,6 +36,7 @@ import {
   ArrowLeftRight,
   Link,
   Youtube,
+  Flame,
   Upload,
   ArrowRight,
   CheckCircle2,
@@ -47,6 +48,7 @@ import {
   Shapes,
   Palette,
   Camera,
+  Layers,
   Factory,
   Landmark,
   Circle
@@ -162,7 +164,7 @@ function SortableImage({ id, url, keyword, onRemove, onDoubleClick, onKeywordCha
         <input 
           type="text"
           placeholder={`@${uiLang === "zh" ? "关键词" : "tag"}`}
-          value={keyword}
+          value={keyword || ""}
           onChange={(e) => {
             const val = e.target.value.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, "");
             onKeywordChange(val);
@@ -173,6 +175,82 @@ function SortableImage({ id, url, keyword, onRemove, onDoubleClick, onKeywordCha
     </div>
   );
 }
+
+interface TrendingVideo {
+  id: string;
+  title: string;
+  views: string;
+  author: string;
+  thumbnail: string;
+  url: string;
+}
+
+const TRENDING_VIDEOS: TrendingVideo[] = [
+  {
+    id: "1",
+    title: "the door iguana 🦎 #funny #subscribe #comedy #trendingshorts #viralshorts",
+    views: "8.7M",
+    author: "M.RISKI ALFARES",
+    thumbnail: "https://picsum.photos/seed/iguana/120/200",
+    url: "https://www.youtube.com/shorts/dQw4w9WgXcQ"
+  },
+  {
+    id: "2",
+    title: "ducking save seriously injured cat #duckrescue #cuteanimals #animalrescue 56",
+    views: "6.8M",
+    author: "SAPNON Ke UDAAN 70",
+    thumbnail: "https://picsum.photos/seed/cat_rescue/120/200",
+    url: "https://www.youtube.com/shorts/jNQXAC9IVRw"
+  },
+  {
+    id: "3",
+    title: "Minecraft but everything is CAKE! 🍰 #minecraft #gaming #shorts",
+    views: "12M",
+    author: "Dream",
+    thumbnail: "https://picsum.photos/seed/minecraft/120/200",
+    url: "https://www.youtube.com/shorts/minecraft_cake"
+  },
+  {
+    id: "4",
+    title: "Satisfying Hydraulic Press vs Nokia 3310 📱 #satisfying #experiment",
+    views: "15M",
+    author: "PressChannel",
+    thumbnail: "https://picsum.photos/seed/hydraulic/120/200",
+    url: "https://www.youtube.com/shorts/nokia_press"
+  },
+  {
+    id: "5",
+    title: "Teaching my dog to speak human?! 🐶 #dog #funny #cute",
+    views: "4.2M",
+    author: "DogWiz",
+    thumbnail: "https://picsum.photos/seed/dog_speak/120/200",
+    url: "https://www.youtube.com/shorts/dog_human"
+  },
+  {
+    id: "6",
+    title: "Making giant bubble with soap 🧼 #diy #bubbles #shorts",
+    views: "2.1M",
+    author: "DIYKing",
+    thumbnail: "https://picsum.photos/seed/bubbles/120/200",
+    url: "https://www.youtube.com/shorts/giant_bubble"
+  },
+  {
+    id: "7",
+    title: "Unboxing the worlds smallest laptop! 💻 #tech #unboxing",
+    views: "5.5M",
+    author: "TechReview",
+    thumbnail: "https://picsum.photos/seed/tech_unbox/120/200",
+    url: "https://www.youtube.com/shorts/small_laptop"
+  },
+  {
+    id: "8",
+    title: "How to make a paper airplane that flies 1km ✈️ #origami #tutorial",
+    views: "9.1M",
+    author: "PaperMaster",
+    thumbnail: "https://picsum.photos/seed/paper_plane/120/200",
+    url: "https://www.youtube.com/shorts/paper_plane"
+  }
+];
 
 export default function App() {
   const [uiLang, setUiLang] = useState<Language>("zh");
@@ -202,7 +280,7 @@ export default function App() {
   const [result, setResult] = useState<PromptResult | null>(null);
   const [copied, setCopied] = useState(false);
   const [shareStatus, setShareStatus] = useState<"idle" | "success">("idle");
-  const [downloadStatus, setDownloadStatus] = useState<"idle" | "success">("idle");
+  const [downloadStatus, setDownloadStatus] = useState<"idle" | "success" | "json_success">("idle");
   const [error, setError] = useState<string | null>(null);
   const [reverseError, setReverseError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -225,6 +303,7 @@ export default function App() {
     historyCapacity: 10
   });
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+  const [showTrending, setShowTrending] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -1058,6 +1137,46 @@ export default function App() {
     setTimeout(() => setDownloadStatus("idle"), 3000);
   };
 
+  const handleDownloadJson = () => {
+    if (!result) return;
+    
+    // Prepare a clean object for API automation
+    const exportData = {
+      version: "1.0",
+      timestamp: new Date().toISOString(),
+      project: "AI Video Prompt Director",
+      parameters: {
+        model: result.parameters.model,
+        language: result.parameters.language,
+        duration: result.parameters.duration,
+        motionIntensity: result.parameters.motionIntensity || null,
+        shotCount: result.parameters.shotCount,
+        technique: result.parameters.technique || null,
+        style: result.parameters.style || null
+      },
+      content: {
+        mainPrompt: result.mainPrompt,
+        translation: result.translation,
+        concept: result.parameters.concept
+      },
+      assets: images.map(img => ({
+        id: img.id,
+        keyword: img.keyword || ""
+      }))
+    };
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `video_prompt_${Date.now()}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    
+    setDownloadStatus("json_success");
+    setTimeout(() => setDownloadStatus("idle"), 3000);
+  };
+
   const toggleUiLang = () => {
     setUiLang(prev => prev === "zh" ? "en" : "zh");
   };
@@ -1067,11 +1186,16 @@ export default function App() {
     setSelectedModel("Seedance 2.0");
     setSelectedLanguage("Chinese");
     setSelectedTechnique("");
+    setSelectedVisualStyle("");
     setIsDurationEnabled(false);
     setTotalDuration("");
     setImages([]);
     setResult(null);
     setError(null);
+    setReverseUrl("");
+    setReverseFile(null);
+    setReverseError(null);
+    setReverseSuccess(false);
   };
 
   const loadFromHistory = (item: HistoryItem) => {
@@ -1314,7 +1438,7 @@ export default function App() {
                       <label className="text-sm font-bold text-muted uppercase tracking-widest">{t.apiKey}</label>
                       <input 
                         type="password"
-                        value={apiConfig.apiKey}
+                        value={apiConfig.apiKey || ""}
                         onChange={(e) => setApiConfig({...apiConfig, apiKey: e.target.value})}
                         placeholder="sk-..."
                         className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-base focus:border-brand-primary outline-none transition-all"
@@ -1326,7 +1450,7 @@ export default function App() {
                         <label className="text-sm font-bold text-muted uppercase tracking-widest">{t.apiBaseUrl}</label>
                         <input 
                           type="text"
-                          value={apiConfig.baseUrl}
+                          value={apiConfig.baseUrl || ""}
                           onChange={(e) => setApiConfig({...apiConfig, baseUrl: e.target.value})}
                           placeholder="https://api.openai.com/v1"
                           className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-base focus:border-brand-primary outline-none transition-all"
@@ -1351,7 +1475,7 @@ export default function App() {
                       </div>
                       <input 
                         type="text"
-                        value={apiConfig.modelName}
+                        value={apiConfig.modelName || ""}
                         onChange={(e) => setApiConfig({...apiConfig, modelName: e.target.value})}
                         placeholder={
                           apiConfig.provider === "gemini" ? "gemini-3.1-pro-preview" :
@@ -2149,7 +2273,7 @@ export default function App() {
                         <Timer className="w-4 h-4 text-muted" />
                         <input
                           type="number"
-                          value={totalDuration}
+                          value={totalDuration || ""}
                           onChange={(e) => setTotalDuration(e.target.value)}
                           placeholder={t.durationPlaceholder}
                           className="flex-1 bg-transparent border-none outline-none text-base text-main font-mono"
@@ -2239,7 +2363,7 @@ export default function App() {
                   </div>
                   <textarea
                     ref={textareaRef}
-                    value={userInput}
+                    value={userInput || ""}
                     onChange={handleTextareaChange}
                     onScroll={handleScroll}
                     placeholder={t.placeholder}
@@ -2393,6 +2517,13 @@ export default function App() {
                     <Video className="w-4 h-4 text-brand-primary" />
                     <span className="label-micro">{t.videoReverseTitle}</span>
                   </div>
+                  <button 
+                    onClick={handleClearAll}
+                    className="flex items-center gap-1 text-sm font-bold text-muted hover:text-red-500 transition-colors"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    {t.clearAll}
+                  </button>
                 </div>
                 
                 <div className="p-6 flex flex-col gap-8">
@@ -2456,11 +2587,92 @@ export default function App() {
                     ) : (
                       <div className="space-y-3">
                         <label className="label-micro">{reverseMode === "youtube" ? "YouTube URL" : "Video URL"}</label>
-                        <div className="flex items-center gap-3 bg-brand-surface border border-brand-border rounded px-4 py-3 focus-within:border-brand-primary transition-all">
-                          {reverseMode === "youtube" ? <Youtube className="w-4 h-4 text-red-500" /> : <Link className="w-4 h-4 text-brand-primary" />}
+                        <div className="flex items-center gap-3 bg-brand-surface border border-brand-border rounded px-4 py-3 focus-within:border-brand-primary transition-all relative">
+                          <div className="flex items-center gap-2 pr-3 border-r border-brand-border group">
+                            {reverseMode === "youtube" ? (
+                              <div className="relative">
+                                <button
+                                  onClick={() => setShowTrending(!showTrending)}
+                                  className={`flex items-center gap-1.5 px-2 py-1 rounded transition-all whitespace-nowrap active:scale-95 ${
+                                    showTrending 
+                                      ? "bg-brand-primary text-black" 
+                                      : "hover:bg-brand-border/30 text-muted hover:text-dim"
+                                  }`}
+                                >
+                                  <Flame className={`w-3.5 h-3.5 ${showTrending ? "text-black" : "text-red-500 animate-pulse"}`} />
+                                  <span className="text-sm font-bold">{t.trending}</span>
+                                  <ChevronDown className={`w-3 h-3 transition-transform duration-300 ${showTrending ? "rotate-180" : ""}`} />
+                                </button>
+
+                                <AnimatePresence>
+                                  {showTrending && (
+                                    <>
+                                      <motion.div
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        onClick={() => setShowTrending(false)}
+                                        className="fixed inset-0 z-[120]"
+                                      />
+                                      <motion.div
+                                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                                        className="absolute left-0 top-full mt-2 w-80 max-h-[480px] bg-brand-surface border border-brand-border rounded-xl shadow-2xl z-[130] overflow-hidden flex flex-col"
+                                      >
+                                        <div className="p-4 border-b border-brand-border bg-brand-primary/5">
+                                          <div className="flex items-center gap-2 mb-1">
+                                            <Flame className="w-4 h-4 text-red-500" />
+                                            <span className="text-sm font-bold text-main">{t.trendingTitle}</span>
+                                          </div>
+                                          <p className="text-xs text-muted">{t.trendingSubtitle}</p>
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
+                                          {TRENDING_VIDEOS.map((video) => (
+                                            <button
+                                              key={video.id}
+                                              onClick={() => {
+                                                setReverseUrl(video.url);
+                                                setShowTrending(false);
+                                              }}
+                                              className="w-full flex gap-3 p-2 rounded-lg hover:bg-brand-border/20 transition-all text-left group"
+                                            >
+                                              <div className="w-16 h-24 rounded-md overflow-hidden shrink-0 border border-brand-border/50 bg-brand-bg relative">
+                                                <img 
+                                                  src={video.thumbnail} 
+                                                  alt={video.title} 
+                                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                                  referrerPolicy="no-referrer"
+                                                />
+                                                <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
+                                              </div>
+                                              <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                                                <p className="text-xs font-bold text-main line-clamp-2 leading-relaxed group-hover:text-brand-primary transition-colors">
+                                                  {video.title}
+                                                </p>
+                                                <div className="space-y-0.5">
+                                                  <div className="flex items-center gap-1.5">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                                                    <span className="text-[10px] text-muted font-bold tracking-tight">{video.views} {t.views}</span>
+                                                  </div>
+                                                  <p className="text-[10px] text-dim truncate font-medium">{video.author}</p>
+                                                </div>
+                                              </div>
+                                            </button>
+                                          ))}
+                                        </div>
+                                      </motion.div>
+                                    </>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            ) : (
+                              reverseMode === "youtube" ? <Youtube className="w-4 h-4 text-red-500" /> : <Link className="w-4 h-4 text-brand-primary" />
+                            )}
+                          </div>
                           <input
                             type="text"
-                            value={reverseUrl}
+                            value={reverseUrl || ""}
                             onChange={(e) => setReverseUrl(e.target.value)}
                             placeholder={reverseMode === "youtube" ? t.pasteYoutube : t.pasteVideoUrl}
                             className="flex-1 bg-transparent border-none outline-none text-base text-main"
@@ -2606,6 +2818,13 @@ export default function App() {
                   >
                     {downloadStatus === 'success' ? <CheckCircle2 className="w-3 h-3" /> : <Download className="w-3 h-3" />}
                     {downloadStatus === 'success' ? t.copied : t.downloadTxt}
+                  </button>
+                  <button 
+                    onClick={handleDownloadJson}
+                    className={`flex items-center gap-1 text-sm font-bold transition-colors ${downloadStatus === 'json_success' ? 'text-green-500' : 'text-muted hover:text-brand-text'}`}
+                  >
+                    {downloadStatus === 'json_success' ? <CheckCircle2 className="w-3 h-3" /> : <Layers className="w-3 h-3" />}
+                    {downloadStatus === 'json_success' ? t.copied : t.downloadJson}
                   </button>
                 </div>
               )}
@@ -2807,7 +3026,7 @@ export default function App() {
                   <label className="text-sm font-bold text-muted uppercase tracking-widest">{t.templateName}</label>
                   <input 
                     type="text"
-                    value={newTemplateName}
+                    value={newTemplateName || ""}
                     onChange={(e) => setNewTemplateName(e.target.value)}
                     placeholder={uiLang === "zh" ? "输入模板名称..." : "Enter template name..."}
                     className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-base focus:border-brand-primary outline-none transition-all"
