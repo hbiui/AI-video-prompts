@@ -13,6 +13,9 @@ import {
   Sparkles,
   X,
   Globe,
+  Brain,
+  Key,
+  Zap,
   History,
   Trash2,
   ExternalLink,
@@ -40,6 +43,7 @@ import {
   Upload,
   ArrowRight,
   CheckCircle2,
+  AlertCircle,
   ChevronDown,
   Loader2,
   Share2,
@@ -80,6 +84,7 @@ import {
   ImageObject,
   testApiConnection
 } from "./services/geminiService";
+import { fetchTrendingShorts } from "./services/youtubeService";
 import { translations, Language, PROMPT_TEMPLATES, PromptTemplate, VISUAL_STYLES } from "./constants";
 
 interface ApiConfig {
@@ -191,7 +196,7 @@ const TRENDING_VIDEOS: TrendingVideo[] = [
     title: "the door iguana 🦎 #funny #subscribe #comedy #trendingshorts #viralshorts",
     views: "8.7M",
     author: "M.RISKI ALFARES",
-    thumbnail: "https://picsum.photos/seed/iguana/120/200",
+    thumbnail: "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=120&h=200&fit=crop",
     url: "https://www.youtube.com/shorts/dQw4w9WgXcQ"
   },
   {
@@ -199,7 +204,7 @@ const TRENDING_VIDEOS: TrendingVideo[] = [
     title: "ducking save seriously injured cat #duckrescue #cuteanimals #animalrescue 56",
     views: "6.8M",
     author: "SAPNON Ke UDAAN 70",
-    thumbnail: "https://picsum.photos/seed/cat_rescue/120/200",
+    thumbnail: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=120&h=200&fit=crop",
     url: "https://www.youtube.com/shorts/jNQXAC9IVRw"
   },
   {
@@ -207,7 +212,7 @@ const TRENDING_VIDEOS: TrendingVideo[] = [
     title: "Minecraft but everything is CAKE! 🍰 #minecraft #gaming #shorts",
     views: "12M",
     author: "Dream",
-    thumbnail: "https://picsum.photos/seed/minecraft/120/200",
+    thumbnail: "https://images.unsplash.com/photo-1587573089734-09cb69c0f2b4?w=120&h=200&fit=crop",
     url: "https://www.youtube.com/shorts/minecraft_cake"
   },
   {
@@ -215,7 +220,7 @@ const TRENDING_VIDEOS: TrendingVideo[] = [
     title: "Satisfying Hydraulic Press vs Nokia 3310 📱 #satisfying #experiment",
     views: "15M",
     author: "PressChannel",
-    thumbnail: "https://picsum.photos/seed/hydraulic/120/200",
+    thumbnail: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=120&h=200&fit=crop",
     url: "https://www.youtube.com/shorts/nokia_press"
   },
   {
@@ -223,7 +228,7 @@ const TRENDING_VIDEOS: TrendingVideo[] = [
     title: "Teaching my dog to speak human?! 🐶 #dog #funny #cute",
     views: "4.2M",
     author: "DogWiz",
-    thumbnail: "https://picsum.photos/seed/dog_speak/120/200",
+    thumbnail: "https://images.unsplash.com/photo-1517849845537-4d257902454a?w=120&h=200&fit=crop",
     url: "https://www.youtube.com/shorts/dog_human"
   },
   {
@@ -231,7 +236,7 @@ const TRENDING_VIDEOS: TrendingVideo[] = [
     title: "Making giant bubble with soap 🧼 #diy #bubbles #shorts",
     views: "2.1M",
     author: "DIYKing",
-    thumbnail: "https://picsum.photos/seed/bubbles/120/200",
+    thumbnail: "https://images.unsplash.com/photo-1510074377623-8cf13fb86c08?w=120&h=200&fit=crop",
     url: "https://www.youtube.com/shorts/giant_bubble"
   },
   {
@@ -239,7 +244,7 @@ const TRENDING_VIDEOS: TrendingVideo[] = [
     title: "Unboxing the worlds smallest laptop! 💻 #tech #unboxing",
     views: "5.5M",
     author: "TechReview",
-    thumbnail: "https://picsum.photos/seed/tech_unbox/120/200",
+    thumbnail: "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=120&h=200&fit=crop",
     url: "https://www.youtube.com/shorts/small_laptop"
   },
   {
@@ -247,7 +252,7 @@ const TRENDING_VIDEOS: TrendingVideo[] = [
     title: "How to make a paper airplane that flies 1km ✈️ #origami #tutorial",
     views: "9.1M",
     author: "PaperMaster",
-    thumbnail: "https://picsum.photos/seed/paper_plane/120/200",
+    thumbnail: "https://images.unsplash.com/photo-1447069387593-a5de0862481e?w=120&h=200&fit=crop",
     url: "https://www.youtube.com/shorts/paper_plane"
   }
 ];
@@ -288,7 +293,9 @@ export default function App() {
   const [showHistory, setShowHistory] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsActiveTab, setSettingsActiveTab] = useState<"api" | "compression" | "youtube">("api");
   const [apiConfig, setApiConfig] = useState<ApiConfig>({ provider: "gemini", apiKey: "" });
+  const [youtubeApiKey, setYoutubeApiKey] = useState("");
   const [providerConfigs, setProviderConfigs] = useState<Record<string, Partial<ApiConfig>>>({
     gemini: { apiKey: "", modelName: "gemini-3.1-pro-preview" },
     openai: { apiKey: "", modelName: "gpt-4o", baseUrl: "https://api.openai.com/v1" },
@@ -304,6 +311,38 @@ export default function App() {
   });
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
   const [showTrending, setShowTrending] = useState(false);
+  const [isRefreshingTrending, setIsRefreshingTrending] = useState(false);
+  const [trendingVideos, setTrendingVideos] = useState<TrendingVideo[]>(TRENDING_VIDEOS);
+
+  const handleRefreshTrending = async () => {
+    if (isRefreshingTrending) return;
+    
+    setIsRefreshingTrending(true);
+    try {
+      const realData = await fetchTrendingShorts(youtubeApiKey);
+      if (realData.length > 0) {
+        setTrendingVideos(realData);
+      } else {
+        // Fallback to shuffle mock data if API returns nothing or not configured
+        const shuffled = [...TRENDING_VIDEOS].sort(() => Math.random() - 0.5);
+        setTrendingVideos(shuffled);
+      }
+    } catch (err) {
+      console.error("Failed to fetch real trending data:", err);
+      // Fallback
+      const shuffled = [...TRENDING_VIDEOS].sort(() => Math.random() - 0.5);
+      setTrendingVideos(shuffled);
+    } finally {
+      setIsRefreshingTrending(false);
+    }
+  };
+
+  // Auto-refresh when trending is opened for the first time
+  useEffect(() => {
+    if (showTrending && trendingVideos === TRENDING_VIDEOS) {
+      handleRefreshTrending();
+    }
+  }, [showTrending]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -470,6 +509,11 @@ export default function App() {
       }
     }
 
+    const savedYoutubeApiKey = localStorage.getItem("director_youtube_api_key");
+    if (savedYoutubeApiKey) {
+      setYoutubeApiKey(savedYoutubeApiKey);
+    }
+
     // Migration: Compress existing history items if they are too large
     const migrateHistory = async () => {
       const savedHistory = localStorage.getItem("director_history");
@@ -551,6 +595,7 @@ export default function App() {
       try {
         const historyStr = JSON.stringify(history);
         localStorage.setItem("director_history", historyStr);
+        localStorage.setItem("director_youtube_api_key", youtubeApiKey);
       } catch (e) {
         console.error("Failed to save history to localStorage:", e);
         if (e instanceof Error && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
@@ -1398,306 +1443,335 @@ export default function App() {
                     <X className="w-5 h-5" />
                   </button>
                 </div>
-                <div className="flex-1 overflow-y-auto p-6 space-y-8">
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-muted uppercase tracking-widest">{t.apiProvider}</label>
-                      <select 
-                        value={apiConfig.provider}
-                        onChange={(e) => handleProviderChange(e.target.value as any)}
-                        className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-base focus:border-brand-primary outline-none transition-all appearance-none"
-                      >
-                        <option value="gemini">Google Gemini</option>
-                        <option value="openai">OpenAI ChatGPT</option>
-                        <option value="doubao">火山引擎豆包 (Doubao)</option>
-                        <option value="anthropic">Anthropic Claude</option>
-                        <option value="custom">Custom (OpenAI Format)</option>
-                      </select>
-                    </div>
 
-                    <div className="p-4 bg-brand-primary/5 border border-brand-primary/20 rounded-lg space-y-2">
-                      <p className="text-sm text-muted leading-relaxed">
-                        {t.providerInfo[apiConfig.provider]}
-                      </p>
-                      <a 
-                        href={
-                          apiConfig.provider === "gemini" ? "https://aistudio.google.com/app/apikey" :
-                          apiConfig.provider === "openai" ? "https://platform.openai.com/api-keys" :
-                          apiConfig.provider === "doubao" ? "https://www.volcengine.com/product/doubao" :
-                          "#"
-                        }
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-brand-text hover:underline inline-flex items-center gap-1 font-bold"
-                      >
-                        {t.applyLink} <ExternalLink className="w-2.5 h-2.5" />
-                      </a>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-muted uppercase tracking-widest">{t.apiKey}</label>
-                      <input 
-                        type="password"
-                        value={apiConfig.apiKey || ""}
-                        onChange={(e) => setApiConfig({...apiConfig, apiKey: e.target.value})}
-                        placeholder="sk-..."
-                        className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-base focus:border-brand-primary outline-none transition-all"
-                      />
-                    </div>
-
-                    {apiConfig.provider !== "gemini" && (
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-muted uppercase tracking-widest">{t.apiBaseUrl}</label>
-                        <input 
-                          type="text"
-                          value={apiConfig.baseUrl || ""}
-                          onChange={(e) => setApiConfig({...apiConfig, baseUrl: e.target.value})}
-                          placeholder="https://api.openai.com/v1"
-                          className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-base focus:border-brand-primary outline-none transition-all"
-                        />
-                      </div>
-                    )}
-
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <label className="text-sm font-bold text-muted uppercase tracking-widest">{t.apiModelName}</label>
-                        <button 
-                          onClick={handleTestConnection}
-                          disabled={testStatus.loading}
-                          className={`text-xs font-bold px-2 py-0.5 rounded border transition-all ${
-                            testStatus.success === true ? 'bg-green-500/10 border-green-500/50 text-green-500' :
-                            testStatus.success === false ? 'bg-red-500/10 border-red-500/50 text-red-500' :
-                            'bg-brand-primary/10 border-brand-primary/30 text-brand-text hover:bg-brand-primary hover:text-black'
-                          }`}
-                        >
-                          {testStatus.loading ? t.testing : t.testConnection}
-                        </button>
-                      </div>
-                      <input 
-                        type="text"
-                        value={apiConfig.modelName || ""}
-                        onChange={(e) => setApiConfig({...apiConfig, modelName: e.target.value})}
-                        placeholder={
-                          apiConfig.provider === "gemini" ? "gemini-3.1-pro-preview" :
-                          apiConfig.provider === "openai" ? "gpt-4o" :
-                          apiConfig.provider === "doubao" ? "doubao-seed-2-0-pro-260215" :
-                          apiConfig.provider === "anthropic" ? "claude-3-5-sonnet-20240620" :
-                          "model-name"
-                        }
-                        className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-base focus:border-brand-primary outline-none transition-all"
-                      />
-                      
-                      {apiConfig.provider === "gemini" && (
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          {[
-                            { name: "3.1 Pro", id: "gemini-3.1-pro-preview" },
-                            { name: "3.1 Flash Lite", id: "gemini-3.1-flash-lite-preview" },
-                            { name: "3 Flash", id: "gemini-3-flash-preview" },
-                            { name: "3 Pro", id: "gemini-3-pro-preview" }
-                          ].map(m => (
-                            <button
-                              key={m.id}
-                              type="button"
-                              onClick={() => setApiConfig({...apiConfig, modelName: m.id})}
-                              className={`text-xs px-2 py-1 rounded border transition-all ${
-                                apiConfig.modelName === m.id 
-                                  ? "bg-brand-primary/20 border-brand-primary text-brand-primary" 
-                                  : "bg-brand-surface border-brand-border text-muted hover:border-brand-primary/50"
-                              }`}
-                            >
-                              {m.name}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      {apiConfig.provider === "openai" && (
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          {[
-                            { name: "GPT-4o", id: "gpt-4o" },
-                            { name: "GPT-4o Mini", id: "gpt-4o-mini" },
-                            { name: "o1 Preview", id: "o1-preview" },
-                            { name: "o1 Mini", id: "o1-mini" },
-                            { name: "GPT-4 Turbo", id: "gpt-4-turbo" }
-                          ].map(m => (
-                            <button
-                              key={m.id}
-                              type="button"
-                              onClick={() => setApiConfig({...apiConfig, modelName: m.id})}
-                              className={`text-xs px-2 py-1 rounded border transition-all ${
-                                apiConfig.modelName === m.id 
-                                  ? "bg-brand-primary/20 border-brand-primary text-brand-primary" 
-                                  : "bg-brand-surface border-brand-border text-muted hover:border-brand-primary/50"
-                              }`}
-                            >
-                              {m.name}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      {apiConfig.provider === "anthropic" && (
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          {[
-                            { name: "Claude 3.5 Sonnet", id: "claude-3-5-sonnet-20240620" },
-                            { name: "Claude 3.5 Haiku", id: "claude-3-5-haiku-20241022" },
-                            { name: "Claude 3 Opus", id: "claude-3-opus-20240229" },
-                            { name: "Claude 3 Sonnet", id: "claude-3-sonnet-20240229" },
-                            { name: "Claude 3 Haiku", id: "claude-3-haiku-20240307" }
-                          ].map(m => (
-                            <button
-                              key={m.id}
-                              type="button"
-                              onClick={() => setApiConfig({...apiConfig, modelName: m.id})}
-                              className={`text-xs px-2 py-1 rounded border transition-all ${
-                                apiConfig.modelName === m.id 
-                                  ? "bg-brand-primary/20 border-brand-primary text-brand-primary" 
-                                  : "bg-brand-surface border-brand-border text-muted hover:border-brand-primary/50"
-                              }`}
-                            >
-                              {m.name}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {apiConfig.provider === "doubao" && (
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          {[
-                            { name: "Seed 2.0 Pro", id: "doubao-seed-2-0-pro-260215" },
-                            { name: "Seed 2.0 Lite", id: "doubao-seed-2-0-lite-260215" },
-                            { name: "Seed 2.0 Mini", id: "doubao-seed-2-0-mini-260215" }
-                          ].map(m => (
-                            <button
-                              key={m.id}
-                              type="button"
-                              onClick={() => setApiConfig({...apiConfig, modelName: m.id})}
-                              className={`text-xs px-2 py-1 rounded border transition-all ${
-                                apiConfig.modelName === m.id 
-                                  ? "bg-brand-primary/20 border-brand-primary text-brand-primary" 
-                                  : "bg-brand-surface border-brand-border text-muted hover:border-brand-primary/50"
-                              }`}
-                            >
-                              {m.name}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {testStatus.message && (
-                        <p className={`text-xs mt-1 font-medium animate-in fade-in slide-in-from-top-1 duration-200 ${testStatus.success ? 'text-green-500' : 'text-red-500'}`}>
-                          {testStatus.message}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Image Compression Settings */}
-                  <div className="space-y-4 pt-4 border-t border-brand-border">
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-bold text-muted uppercase tracking-widest">{t.imageCompression}</label>
-                      <button 
-                        onClick={() => setCompressionConfig({...compressionConfig, enabled: !compressionConfig.enabled})}
-                        className={`w-10 h-5 rounded-full transition-colors relative ${compressionConfig.enabled ? 'bg-brand-primary' : 'bg-brand-border'}`}
-                      >
-                        <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${compressionConfig.enabled ? 'left-6' : 'left-1'}`} />
-                      </button>
-                    </div>
-
-                    {compressionConfig.enabled && (
-                      <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <label className="text-sm font-bold text-muted uppercase tracking-widest">{t.compressionQuality}</label>
-                            <span className="text-sm font-mono text-brand-primary">{Math.round(compressionConfig.quality * 100)}%</span>
-                          </div>
-                          <input 
-                            type="range"
-                            min="0.1"
-                            max="1.0"
-                            step="0.05"
-                            value={compressionConfig.quality}
-                            onInput={(e: React.FormEvent<HTMLInputElement>) => {
-                              const val = (e.target as HTMLInputElement).valueAsNumber;
-                              setCompressionConfig(prev => ({...prev, quality: val}));
-                            }}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value);
-                              setCompressionConfig(prev => ({...prev, quality: val}));
-                            }}
-                            className="w-full accent-brand-primary cursor-pointer"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <label className="text-sm font-bold text-muted uppercase tracking-widest">{t.maxDimension}</label>
-                            <span className="text-sm font-mono text-brand-primary">{compressionConfig.maxDimension}px</span>
-                          </div>
-                          <input 
-                            type="range"
-                            min="200"
-                            max="4000"
-                            step="50"
-                            value={compressionConfig.maxDimension}
-                            onInput={(e: React.FormEvent<HTMLInputElement>) => {
-                              const val = (e.target as HTMLInputElement).valueAsNumber;
-                              setCompressionConfig(prev => ({...prev, maxDimension: val}));
-                            }}
-                            onChange={(e) => {
-                              const val = parseInt(e.target.value);
-                              setCompressionConfig(prev => ({...prev, maxDimension: val}));
-                            }}
-                            className="w-full accent-brand-primary cursor-pointer"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <label className="text-sm font-bold text-muted uppercase tracking-widest">{t.historyCapacity}</label>
-                            <span className="text-sm font-mono text-brand-primary">{compressionConfig.historyCapacity}</span>
-                          </div>
-                          <input 
-                            type="range"
-                            min="5"
-                            max="50"
-                            step="1"
-                            value={compressionConfig.historyCapacity}
-                            onInput={(e: React.FormEvent<HTMLInputElement>) => {
-                              const val = (e.target as HTMLInputElement).valueAsNumber;
-                              setCompressionConfig(prev => ({...prev, historyCapacity: val}));
-                            }}
-                            onChange={(e) => {
-                              const val = parseInt(e.target.value);
-                              setCompressionConfig(prev => ({...prev, historyCapacity: val}));
-                            }}
-                            className="w-full accent-brand-primary cursor-pointer"
-                          />
-                        </div>
-                      </div>
-                    )}
-                    <p className="text-sm text-dim leading-relaxed">
-                      {t.compressionTip}
-                    </p>
-                    <p className="text-sm text-dim leading-relaxed">
-                      {t.historyCapacityTip}
-                    </p>
-                  </div>
-
-                  <div className="pt-4">
-                    <button 
-                      onClick={() => {
-                        localStorage.setItem("director_api_config", JSON.stringify(apiConfig));
-                        localStorage.setItem("director_compression_config", JSON.stringify(compressionConfig));
-                        setShowSettings(false);
-                      }}
-                      className="w-full py-3 rounded-lg bg-brand-primary text-black text-sm font-bold hover:bg-brand-primary/90 transition-all flex items-center justify-center gap-2"
+                {/* Tab Bar */}
+                <div className="flex border-b border-brand-border bg-brand-bg/20 p-1 gap-1">
+                  {[
+                    { id: "api", label: t.apiConfig, icon: Cpu },
+                    { id: "compression", label: t.imageCompression, icon: Zap },
+                    { id: "youtube", label: t.youtubeApiConfig, icon: Youtube }
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setSettingsActiveTab(tab.id as any)}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                        settingsActiveTab === tab.id 
+                          ? "bg-brand-surface border border-brand-border text-brand-primary shadow-sm" 
+                          : "text-muted hover:text-main hover:bg-brand-surface/50"
+                      }`}
                     >
-                      <Check className="w-4 h-4" />
-                      {t.saveSettings}
+                      <tab.icon className={`w-3.5 h-3.5 ${settingsActiveTab === tab.id ? "text-brand-primary" : "text-muted/50"}`} />
+                      {tab.label}
                     </button>
-                    <p className="text-sm text-dim text-center mt-4">
-                      {t.apiTip}
-                    </p>
-                  </div>
+                  ))}
+                </div>
+
+                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                  <AnimatePresence mode="wait">
+                    {/* Section 1: AI Engine Configuration */}
+                    {settingsActiveTab === "api" && (
+                      <motion.section 
+                        key="api"
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        className="p-6 space-y-6"
+                      >
+                        <div className="flex items-center gap-2 pb-2 border-b border-brand-border/50">
+                          <Cpu className="w-4 h-4 text-brand-primary" />
+                          <h3 className="text-sm font-black uppercase tracking-[0.2em] text-main">{t.apiConfig}</h3>
+                        </div>
+
+                        <div className="space-y-5 px-1">
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <label className="text-[10px] font-black text-muted uppercase tracking-widest">{t.apiProvider}</label>
+                            </div>
+                            <div className="relative group">
+                              <select 
+                                value={apiConfig.provider}
+                                onChange={(e) => handleProviderChange(e.target.value as any)}
+                                className="w-full bg-brand-bg/50 border border-brand-border rounded-lg pl-4 pr-10 py-3 text-sm font-bold focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 outline-none transition-all appearance-none cursor-pointer"
+                              >
+                                <option value="gemini">Google Gemini</option>
+                                <option value="openai">OpenAI ChatGPT</option>
+                                <option value="doubao">火山引擎豆包 (Doubao)</option>
+                                <option value="anthropic">Anthropic Claude</option>
+                                <option value="custom">Custom (OpenAI Format)</option>
+                              </select>
+                              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none group-hover:text-brand-primary transition-colors" />
+                            </div>
+                          </div>
+
+                          <div className="p-4 bg-brand-primary/5 border border-brand-primary/20 rounded-xl space-y-3 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                              <Brain className="w-12 h-12 text-brand-primary" />
+                            </div>
+                            <p className="text-xs text-muted leading-relaxed font-medium pr-8">
+                              {t.providerInfo[apiConfig.provider]}
+                            </p>
+                            <a 
+                              href={
+                                apiConfig.provider === "gemini" ? "https://aistudio.google.com/app/apikey" :
+                                apiConfig.provider === "openai" ? "https://platform.openai.com/api-keys" :
+                                apiConfig.provider === "doubao" ? "https://ark.cn-beijing.volces.com/" :
+                                "#"
+                              }
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-brand-primary hover:text-brand-text flex items-center gap-1.5 font-black transition-colors w-fit"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              {t.applyLink}
+                            </a>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-muted uppercase tracking-widest">{t.apiKey}</label>
+                            <div className="relative">
+                              <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted/50" />
+                              <input 
+                                type="password"
+                                value={apiConfig.apiKey || ""}
+                                onChange={(e) => setApiConfig({...apiConfig, apiKey: e.target.value})}
+                                placeholder="sk-..."
+                                className="w-full bg-brand-bg/50 border border-brand-border rounded-lg pl-10 pr-4 py-3 text-sm font-mono focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 outline-none transition-all"
+                              />
+                            </div>
+                          </div>
+
+                          {apiConfig.provider !== "gemini" && (
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black text-muted uppercase tracking-widest">{t.apiBaseUrl}</label>
+                              <div className="relative">
+                                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted/50" />
+                                <input 
+                                  type="text"
+                                  value={apiConfig.baseUrl || ""}
+                                  onChange={(e) => setApiConfig({...apiConfig, baseUrl: e.target.value})}
+                                  placeholder="https://api.openai.com/v1"
+                                  className="w-full bg-brand-bg/50 border border-brand-border rounded-lg pl-10 pr-4 py-3 text-sm font-mono focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 outline-none transition-all"
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                              <label className="text-[10px] font-black text-muted uppercase tracking-widest">{t.apiModelName}</label>
+                              <button 
+                                onClick={handleTestConnection}
+                                disabled={testStatus.loading}
+                                className={`flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1 rounded-full border transition-all ${
+                                  testStatus.success === true ? 'bg-green-500/10 border-green-500/30 text-green-500' :
+                                  testStatus.success === false ? 'bg-red-500/10 border-red-500/30 text-red-500' :
+                                  'bg-brand-primary/5 border-brand-primary/20 text-brand-primary hover:bg-brand-primary hover:text-black'
+                                }`}
+                              >
+                                {testStatus.loading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                                {testStatus.loading ? t.testing : t.testConnection}
+                              </button>
+                            </div>
+                            
+                            <input 
+                              type="text"
+                              value={apiConfig.modelName || ""}
+                              onChange={(e) => setApiConfig({...apiConfig, modelName: e.target.value})}
+                              placeholder="model-name"
+                              className="w-full bg-brand-bg/50 border border-brand-border rounded-lg px-4 py-3 text-sm font-mono focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 outline-none transition-all"
+                            />
+                            
+                            {/* Model Preset Chips */}
+                            <div className="flex flex-wrap gap-1.5 mt-1">
+                              {(apiConfig.provider === "gemini" ? [
+                                { name: "3.1 Pro", id: "gemini-3.1-pro-preview" },
+                                { name: "3.1 Flash Lite", id: "gemini-3.1-flash-lite-preview" },
+                                { name: "3 Flash", id: "gemini-3-flash-preview" },
+                                { name: "3 Pro", id: "gemini-3-pro-preview" }
+                              ] : apiConfig.provider === "openai" ? [
+                                { name: "GPT-4o", id: "gpt-4o" },
+                                { name: "GPT-4o Mini", id: "gpt-4o-mini" },
+                                { name: "o1 Preview", id: "o1-preview" },
+                                { name: "o1 Mini", id: "o1-mini" }
+                              ] : apiConfig.provider === "anthropic" ? [
+                                { name: "Claude 3.5 Sonnet", id: "claude-3-5-sonnet-20240620" },
+                                { name: "Claude 3.5 Haiku", id: "claude-3-5-haiku-20241022" },
+                                { name: "Claude 3 Opus", id: "claude-3-opus-20240229" }
+                              ] : apiConfig.provider === "doubao" ? [
+                                { name: "Seed 2.0 Pro", id: "doubao-seed-2-0-pro-260215" },
+                                { name: "Seed 2.0 Lite", id: "doubao-seed-2-0-lite-260215" },
+                                { name: "Seed 2.0 Mini", id: "doubao-seed-2-0-mini-260215" }
+                              ] : []).map(m => (
+                                <button
+                                  key={m.id}
+                                  type="button"
+                                  onClick={() => setApiConfig({...apiConfig, modelName: m.id})}
+                                  className={`text-[10px] font-bold px-2 py-1 rounded-md border transition-all ${
+                                    apiConfig.modelName === m.id 
+                                      ? "bg-brand-primary text-black border-brand-primary shadow-lg shadow-brand-primary/20" 
+                                      : "bg-brand-surface/50 border-brand-border text-muted hover:border-brand-primary/50 hover:text-brand-primary"
+                                  }`}
+                                >
+                                  {m.name}
+                                </button>
+                              ))}
+                            </div>
+
+                            {testStatus.message && (
+                              <div className={`flex items-center gap-2 p-2 rounded text-[10px] font-bold animate-in fade-in slide-in-from-top-1 ${testStatus.success ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                {testStatus.success ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+                                {testStatus.message}
+                              </div>
+                            )}
+
+                            <div className="p-4 bg-brand-surface border border-brand-border rounded-xl space-y-2 group hover:border-brand-primary/30 transition-colors mt-4">
+                              <div className="flex items-center gap-2 text-brand-primary">
+                                <Info className="w-3 h-3" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">{t.proTip}</span>
+                              </div>
+                              <p className="text-[10px] text-muted leading-relaxed italic">
+                                {t.apiTip}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.section>
+                    )}
+
+                    {/* Section 2: Image & Performance */}
+                    {settingsActiveTab === "compression" && (
+                      <motion.section 
+                        key="compression"
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        className="p-6 space-y-6"
+                      >
+                        <div className="flex items-center gap-2 pb-2 border-b border-brand-border/50">
+                          <Zap className="w-4 h-4 text-brand-primary" />
+                          <h3 className="text-sm font-black uppercase tracking-[0.2em] text-main">{t.imageCompression}</h3>
+                        </div>
+
+                        <div className="space-y-5 px-1">
+                          <div className="flex items-center justify-between p-4 bg-brand-bg/30 border border-brand-border rounded-xl">
+                            <div className="space-y-1">
+                              <span className="text-xs font-bold text-main">{t.enableCompression}</span>
+                              <p className="text-[10px] text-muted max-w-[200px]">{t.compressionTip}</p>
+                            </div>
+                            <button 
+                              onClick={() => setCompressionConfig({...compressionConfig, enabled: !compressionConfig.enabled})}
+                              className={`w-11 h-6 rounded-full transition-all relative ${compressionConfig.enabled ? 'bg-brand-primary shadow-lg shadow-brand-primary/20' : 'bg-brand-border'}`}
+                            >
+                              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${compressionConfig.enabled ? 'left-6' : 'left-1'}`} />
+                            </button>
+                          </div>
+
+                          {compressionConfig.enabled && (
+                            <div className="p-4 bg-brand-bg/30 border border-brand-border rounded-xl space-y-6 animate-in fade-in slide-in-from-top-2">
+                              <div className="space-y-3">
+                                <div className="flex justify-between">
+                                  <label className="text-[10px] font-black text-muted uppercase tracking-widest">{t.compressionQuality}</label>
+                                  <span className="text-xs font-mono font-bold text-brand-primary">{Math.round(compressionConfig.quality * 100)}%</span>
+                                </div>
+                                <input 
+                                  type="range"
+                                  min="0.1"
+                                  max="1.0"
+                                  step="0.05"
+                                  value={compressionConfig.quality}
+                                  onInput={(e: React.FormEvent<HTMLInputElement>) => setCompressionConfig(prev => ({...prev, quality: (e.target as HTMLInputElement).valueAsNumber}))}
+                                  className="w-full h-1.5 bg-brand-border rounded-lg appearance-none cursor-pointer accent-brand-primary"
+                                />
+                              </div>
+
+                              <div className="space-y-3">
+                                <div className="flex justify-between">
+                                  <label className="text-[10px] font-black text-muted uppercase tracking-widest">{t.maxDimension}</label>
+                                  <span className="text-xs font-mono font-bold text-brand-primary">{compressionConfig.maxDimension}px</span>
+                                </div>
+                                <input 
+                                  type="range"
+                                  min="200"
+                                  max="4000"
+                                  step="50"
+                                  value={compressionConfig.maxDimension}
+                                  onInput={(e: React.FormEvent<HTMLInputElement>) => setCompressionConfig(prev => ({...prev, maxDimension: (e.target as HTMLInputElement).valueAsNumber}))}
+                                  className="w-full h-1.5 bg-brand-border rounded-lg appearance-none cursor-pointer accent-brand-primary"
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="space-y-3 px-1">
+                            <div className="flex justify-between">
+                              <label className="text-[10px] font-black text-muted uppercase tracking-widest">{t.historyCapacity}</label>
+                              <span className="text-xs font-mono font-bold text-brand-primary">{compressionConfig.historyCapacity}</span>
+                            </div>
+                            <input 
+                              type="range"
+                              min="5"
+                              max="50"
+                              step="1"
+                              value={compressionConfig.historyCapacity}
+                              onInput={(e: React.FormEvent<HTMLInputElement>) => setCompressionConfig(prev => ({...prev, historyCapacity: (e.target as HTMLInputElement).valueAsNumber}))}
+                              className="w-full h-1.5 bg-brand-border rounded-lg appearance-none cursor-pointer accent-brand-primary"
+                            />
+                            <p className="text-[10px] text-muted italic">{t.historyCapacityTip}</p>
+                          </div>
+                        </div>
+                      </motion.section>
+                    )}
+
+                    {/* Section 3: Platform Integration */}
+                    {settingsActiveTab === "youtube" && (
+                      <motion.section 
+                        key="youtube"
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        className="p-6 space-y-6"
+                      >
+                        <div className="flex items-center gap-2 pb-2 border-b border-brand-border/50">
+                          <Youtube className="w-4 h-4 text-red-500" />
+                          <h3 className="text-sm font-black uppercase tracking-[0.2em] text-main">{t.youtubeApiConfig}</h3>
+                        </div>
+
+                        <div className="space-y-5 px-1 pb-10">
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-muted uppercase tracking-widest">{t.youtubeApiKey}</label>
+                            <div className="relative">
+                              <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-500/40" />
+                              <input 
+                                type="password"
+                                value={youtubeApiKey}
+                                onChange={(e) => setYoutubeApiKey(e.target.value)}
+                                placeholder="AIza..."
+                                className="w-full bg-brand-bg/50 border border-brand-border rounded-lg pl-10 pr-4 py-3 text-sm font-mono focus:border-red-500/50 focus:ring-1 focus:ring-red-500/20 outline-none transition-all"
+                              />
+                            </div>
+                            <p className="text-[10px] text-muted leading-relaxed font-medium bg-red-500/5 p-3 rounded-lg border border-red-500/10">
+                              {t.youtubeApiTip}
+                            </p>
+                          </div>
+                        </div>
+                      </motion.section>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                <div className="p-6 border-t border-brand-border bg-brand-surface shadow-[0_-10px_30px_rgba(0,0,0,0.2)]">
+                  <button 
+                    onClick={() => {
+                      localStorage.setItem("director_api_config", JSON.stringify(apiConfig));
+                      localStorage.setItem("director_compression_config", JSON.stringify(compressionConfig));
+                      localStorage.setItem("director_youtube_api_key", youtubeApiKey);
+                      setShowSettings(false);
+                    }}
+                    className="w-full py-4 rounded-xl bg-brand-primary text-black text-sm font-black uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-brand-primary/20 flex items-center justify-center gap-2"
+                  >
+                    <Check className="w-4 h-4 stroke-[3]" />
+                    {t.saveSettings}
+                  </button>
                 </div>
               </motion.div>
             </>
@@ -2620,17 +2694,26 @@ export default function App() {
                                         exit={{ opacity: 0, scale: 0.95, y: 10 }}
                                         className="absolute left-0 top-full mt-2 w-80 max-h-[480px] bg-brand-surface border border-brand-border rounded-xl shadow-2xl z-[130] overflow-hidden flex flex-col"
                                       >
-                                        <div className="p-4 border-b border-brand-border bg-brand-primary/5">
-                                          <div className="flex items-center gap-2 mb-1">
-                                            <Flame className="w-4 h-4 text-red-500" />
-                                            <span className="text-sm font-bold text-main">{t.trendingTitle}</span>
+                                        <div className="p-4 border-b border-brand-border bg-brand-primary/5 flex items-center justify-between">
+                                          <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                              <Flame className="w-4 h-4 text-red-500" />
+                                              <span className="text-sm font-bold text-main">{t.trendingTitle}</span>
+                                            </div>
+                                            <p className="text-xs text-muted">{t.trendingSubtitle}</p>
                                           </div>
-                                          <p className="text-xs text-muted">{t.trendingSubtitle}</p>
+                                          <button
+                                            onClick={handleRefreshTrending}
+                                            disabled={isRefreshingTrending}
+                                            className={`p-2 rounded-full hover:bg-brand-border/30 transition-all ${isRefreshingTrending ? "animate-spin text-brand-primary" : "text-muted hover:text-main"}`}
+                                          >
+                                            <RefreshCw className="w-4 h-4" />
+                                          </button>
                                         </div>
                                         <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
-                                          {TRENDING_VIDEOS.map((video) => (
+                                          {trendingVideos.map((video) => (
                                             <button
-                                              key={video.id}
+                                              key={video.id + (isRefreshingTrending ? "-ref" : "")}
                                               onClick={() => {
                                                 setReverseUrl(video.url);
                                                 setShowTrending(false);
@@ -2639,10 +2722,14 @@ export default function App() {
                                             >
                                               <div className="w-16 h-24 rounded-md overflow-hidden shrink-0 border border-brand-border/50 bg-brand-bg relative">
                                                 <img 
-                                                  src={video.thumbnail} 
+                                                  src={`${video.thumbnail}?v=${video.id}`} 
                                                   alt={video.title} 
                                                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                                                   referrerPolicy="no-referrer"
+                                                  onError={(e) => {
+                                                    // Fallback to a simpler placeholder if picsum fails
+                                                    (e.target as HTMLImageElement).src = `https://via.placeholder.com/120x200/101010/333333?text=Video`;
+                                                  }}
                                                 />
                                                 <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
                                               </div>
