@@ -148,6 +148,7 @@ export default function App() {
   const [isDragging, setIsDragging] = useState(false);
   const [generationStage, setGenerationStage] = useState(0);
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const [resultViewTab, setResultViewTab] = useState<"main" | "translation">("main");
   const [logoError, setLogoError] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -820,6 +821,7 @@ export default function App() {
     }
 
     setIsGenerating(true);
+    setResultViewTab('main');
     setError(null);
     if (rightPanelRef.current) {
       rightPanelRef.current.scrollTo({ top: 0, behavior: "smooth" });
@@ -2453,25 +2455,49 @@ export default function App() {
         <div ref={rightPanelRef} className="lg:col-span-7 flex flex-col gap-6">
           <section className="console-panel flex-1 flex flex-col relative">
             <div className="console-header">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-brand-primary" />
-                <span className="label-micro">{t.optimizedPrompt}</span>
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-brand-primary" />
+                  <span className="label-micro">{t.optimizedPrompt}</span>
+                </div>
+                {result && (
+                  <div className="flex bg-brand-surface/50 rounded p-0.5 border border-brand-border">
+                    <button 
+                      onClick={() => setResultViewTab('main')}
+                      className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+                        resultViewTab === 'main' 
+                          ? "bg-brand-primary text-black" 
+                          : "text-muted hover:text-dim"
+                      }`}
+                    >
+                      {t.scriptPreview}
+                    </button>
+                    <button 
+                      onClick={() => setResultViewTab('translation')}
+                      className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+                        resultViewTab === 'translation' 
+                          ? "bg-brand-primary text-black" 
+                          : "text-muted hover:text-dim"
+                      }`}
+                    >
+                      {t.translationRef}
+                    </button>
+                  </div>
+                )}
               </div>
               {result && (
                 <div className="flex items-center gap-4">
                   <button 
-                    onClick={() => copyToClipboard(result.mainPrompt)}
+                    onClick={() => {
+                      const content = resultViewTab === 'main' 
+                        ? (result.parameters.language === selectedLanguage ? result.mainPrompt : result.translation)
+                        : (result.parameters.language === selectedLanguage ? result.translation : result.mainPrompt);
+                      copyToClipboard(content);
+                    }}
                     className="flex items-center gap-1 text-sm font-bold text-muted hover:text-brand-text transition-colors"
                   >
                     {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                     {copied ? t.copied : t.copyPrompt}
-                  </button>
-                  <button 
-                    onClick={handleShare}
-                    className={`flex items-center gap-1 text-sm font-bold transition-colors ${shareStatus === 'success' ? 'text-green-500' : 'text-muted hover:text-brand-text'}`}
-                  >
-                    {shareStatus === 'success' ? <Check className="w-3 h-3" /> : <Share2 className="w-3 h-3" />}
-                    {shareStatus === 'success' ? t.copied : t.sharePrompt}
                   </button>
                   <button 
                     onClick={handleDownload}
@@ -2568,31 +2594,18 @@ export default function App() {
                     animate={{ opacity: 1, y: 0 }}
                     className="space-y-8"
                   >
-                    {/* Main Prompt Area */}
+                    {/* Content Area */}
                     <div className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <div className="h-[1px] flex-1 bg-brand-border" />
-                        <span className="label-micro">{t.scriptPreview}</span>
-                        <div className="h-[1px] flex-1 bg-brand-border" />
-                      </div>
-                      <div className="bg-[var(--input-bg)] p-6 rounded border border-brand-border font-mono text-base leading-relaxed whitespace-pre-wrap selection:bg-brand-primary selection:text-black">
-                        {result?.parameters.language === selectedLanguage 
-                          ? result?.mainPrompt 
-                          : result?.translation}
-                      </div>
-                    </div>
-
-                    {/* Translation Area */}
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <div className="h-[1px] flex-1 bg-brand-border" />
-                        <span className="label-micro">{t.translationRef}</span>
-                        <div className="h-[1px] flex-1 bg-brand-border" />
-                      </div>
-                      <div className="p-4 text-muted text-base leading-relaxed">
-                        {result?.parameters.language === selectedLanguage 
-                          ? result?.translation 
-                          : result?.mainPrompt}
+                      <div className="bg-[var(--input-bg)] p-6 rounded border border-brand-border font-mono text-base leading-relaxed whitespace-pre-wrap selection:bg-brand-primary selection:text-black min-h-[300px]">
+                        {resultViewTab === 'main' ? (
+                          result?.parameters.language === selectedLanguage 
+                            ? result?.mainPrompt 
+                            : result?.translation
+                        ) : (
+                          result?.parameters.language === selectedLanguage 
+                            ? result?.translation 
+                            : result?.mainPrompt
+                        )}
                       </div>
                     </div>
 
