@@ -385,6 +385,11 @@ export default function App() {
     message: null,
     success: null
   });
+  const [youtubeTestStatus, setYoutubeTestStatus] = useState<{ loading: boolean; message: string | null; success: boolean | null }>({
+    loading: false,
+    message: null,
+    success: null
+  });
 
   const techniqueOptions = [
     { id: "montage", icon: Film },
@@ -446,6 +451,31 @@ export default function App() {
     // Clear message after 3 seconds
     setTimeout(() => {
       setTestStatus(prev => ({ ...prev, message: null }));
+    }, 3000);
+  };
+
+  const handleTestYoutubeConnection = async () => {
+    if (!youtubeApiKey) {
+      setYoutubeTestStatus({ loading: false, success: false, message: uiLang === "zh" ? "请输入 YouTube API 密钥" : "Please enter YouTube API Key" });
+      return;
+    }
+
+    setYoutubeTestStatus({ loading: true, success: null, message: t.testing });
+    
+    try {
+      const results = await fetchTrendingShorts(youtubeApiKey);
+      if (results && results.length > 0) {
+        setYoutubeTestStatus({ loading: false, success: true, message: t.testSuccess });
+      } else {
+        setYoutubeTestStatus({ loading: false, success: false, message: uiLang === "zh" ? "连接成功但未返回数据" : "Connected but no data returned" });
+      }
+    } catch (err: any) {
+      setYoutubeTestStatus({ loading: false, success: false, message: err.message || t.testFailed });
+    }
+    
+    // Clear message after 3 seconds
+    setTimeout(() => {
+      setYoutubeTestStatus(prev => ({ ...prev, message: null }));
     }, 3000);
   };
 
@@ -1738,7 +1768,21 @@ export default function App() {
 
                         <div className="space-y-5 px-1 pb-10">
                           <div className="space-y-2">
-                            <label className="text-[10px] font-black text-muted uppercase tracking-widest">{t.youtubeApiKey}</label>
+                            <div className="flex justify-between items-center">
+                              <label className="text-[10px] font-black text-muted uppercase tracking-widest">{t.youtubeApiKey}</label>
+                              <button 
+                                onClick={handleTestYoutubeConnection}
+                                disabled={youtubeTestStatus.loading}
+                                className={`flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1 rounded-full border transition-all ${
+                                  youtubeTestStatus.success === true ? 'bg-green-500/10 border-green-500/30 text-green-500' :
+                                  youtubeTestStatus.success === false ? 'bg-red-500/10 border-red-500/30 text-red-500' :
+                                  'bg-brand-primary/5 border-brand-primary/20 text-brand-primary hover:bg-brand-primary hover:text-black'
+                                }`}
+                              >
+                                {youtubeTestStatus.loading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                                {youtubeTestStatus.loading ? t.testing : t.testConnection}
+                              </button>
+                            </div>
                             <div className="relative">
                               <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-500/40" />
                               <input 
@@ -1749,6 +1793,12 @@ export default function App() {
                                 className="w-full bg-brand-bg/50 border border-brand-border rounded-lg pl-10 pr-4 py-3 text-sm font-mono focus:border-red-500/50 focus:ring-1 focus:ring-red-500/20 outline-none transition-all"
                               />
                             </div>
+                            {youtubeTestStatus.message && (
+                              <div className={`flex items-center gap-2 p-2 rounded text-[10px] font-bold animate-in fade-in slide-in-from-top-1 ${youtubeTestStatus.success ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                {youtubeTestStatus.success ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+                                {youtubeTestStatus.message}
+                              </div>
+                            )}
                             <p className="text-[10px] text-muted leading-relaxed font-medium bg-red-500/5 p-3 rounded-lg border border-red-500/10">
                               {t.youtubeApiTip}
                             </p>
@@ -2722,13 +2772,13 @@ export default function App() {
                                             >
                                               <div className="w-16 h-24 rounded-md overflow-hidden shrink-0 border border-brand-border/50 bg-brand-bg relative">
                                                 <img 
-                                                  src={`${video.thumbnail}?v=${video.id}`} 
+                                                  src={video.thumbnail} 
                                                   alt={video.title} 
                                                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                                                   referrerPolicy="no-referrer"
                                                   onError={(e) => {
-                                                    // Fallback to a simpler placeholder if picsum fails
-                                                    (e.target as HTMLImageElement).src = `https://via.placeholder.com/120x200/101010/333333?text=Video`;
+                                                    // Fallback to a local data URI placeholder if external fails
+                                                    (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='200' viewBox='0 0 120 200'%3E%3Crect width='120' height='200' fill='%23111111'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23333333' font-size='12' font-family='sans-serif'%3EVideo%3C/text%3E%3C/svg%3E";
                                                   }}
                                                 />
                                                 <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
