@@ -42,7 +42,6 @@ import {
   Youtube,
   Flame,
   Upload,
-  ArrowRight,
   CheckCircle2,
   AlertCircle,
   ChevronDown,
@@ -56,7 +55,21 @@ import {
   Layers,
   Factory,
   Landmark,
-  Circle
+  Circle,
+  Maximize,
+  Minimize,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  ArrowDown,
+  ChevronsLeft,
+  ChevronsRight,
+  MoveUp,
+  MoveDown,
+  MoveUpLeft,
+  MoveDownRight,
+  UserPlus,
+  Map
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -84,10 +97,27 @@ import {
   LanguageType, 
   PromptResult,
   ImageObject,
-  testApiConnection
+  testApiConnection,
+  Suggestion
 } from "./services/geminiService";
 import { fetchTrendingShorts } from "./services/youtubeService";
-import { translations, Language, PROMPT_TEMPLATES, PromptTemplate, VISUAL_STYLES } from "./constants";
+import { translations, Language, PROMPT_TEMPLATES, PromptTemplate, VISUAL_STYLES, CAMERA_MOVEMENTS } from "./constants";
+
+interface TranslationTable {
+  [key: string]: any;
+}
+
+interface Character {
+  id: string;
+  name: string;
+  description: string;
+}
+
+interface Scene {
+  id: string;
+  name: string;
+  description: string;
+}
 
 interface ApiConfig {
   provider: "gemini" | "openai" | "doubao" | "anthropic" | "custom";
@@ -114,6 +144,102 @@ interface HistoryItem {
   totalDuration?: number;
   images: ImageObject[];
   result: PromptResult;
+}
+
+function SortableCharacter({ character, onRemove, onEdit }: any) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: character.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition: transition || undefined,
+    zIndex: isDragging ? 20 : 0,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style}
+      className={`relative p-3 rounded-lg border border-brand-border bg-brand-bg flex flex-col gap-2 group ${isDragging ? 'shadow-2xl ring-2 ring-brand-primary/50' : ''}`}
+      {...attributes}
+      {...listeners}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 overflow-hidden">
+          <div className="w-6 h-6 rounded bg-brand-primary/20 flex items-center justify-center shrink-0">
+            <UserPlus className="w-3.5 h-3.5 text-brand-primary" />
+          </div>
+          <span className="text-sm font-bold text-main truncate">@{character.name}</span>
+        </div>
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onPointerDown={e => e.stopPropagation()}>
+          <button onClick={onEdit} className="p-1 hover:bg-brand-border/50 rounded text-muted hover:text-brand-primary">
+            <Pencil className="w-3 h-3" />
+          </button>
+          <button onClick={onRemove} className="p-1 hover:bg-brand-border/50 rounded text-muted hover:text-red-500">
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+      <p className="text-xs text-muted line-clamp-2 leading-relaxed">
+        {character.description}
+      </p>
+    </div>
+  );
+}
+
+function SortableScene({ scene, onRemove, onEdit }: any) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: scene.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition: transition || undefined,
+    zIndex: isDragging ? 20 : 0,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style}
+      className={`relative p-3 rounded-lg border border-brand-border bg-brand-bg flex flex-col gap-2 group ${isDragging ? 'shadow-2xl ring-2 ring-brand-primary/50' : ''}`}
+      {...attributes}
+      {...listeners}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 overflow-hidden">
+          <div className="w-6 h-6 rounded bg-brand-secondary/20 flex items-center justify-center shrink-0">
+            <Map className="w-3.5 h-3.5 text-brand-text" />
+          </div>
+          <span className="text-sm font-bold text-main truncate">@{scene.name}</span>
+        </div>
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onPointerDown={e => e.stopPropagation()}>
+          <button onClick={onEdit} className="p-1 hover:bg-brand-border/50 rounded text-muted hover:text-brand-primary">
+            <Pencil className="w-3 h-3" />
+          </button>
+          <button onClick={onRemove} className="p-1 hover:bg-brand-border/50 rounded text-muted hover:text-red-500">
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+      <p className="text-xs text-muted line-clamp-2 leading-relaxed">
+        {scene.description}
+      </p>
+    </div>
+  );
 }
 
 function SortableImage({ id, url, keyword, onRemove, onDoubleClick, onKeywordChange, uiLang }: { 
@@ -280,6 +406,7 @@ export default function App() {
   const [manualShotCount, setManualShotCount] = useState<string>("3");
   const [showTechniqueDropdown, setShowTechniqueDropdown] = useState(false);
   const [showVisualStyleDropdown, setShowVisualStyleDropdown] = useState(false);
+  const [showCameraPopover, setShowCameraPopover] = useState(false);
   const [activeVisualStyleCategory, setActiveVisualStyleCategory] = useState<string | null>(null);
   const [hoveredStyleDesc, setHoveredStyleDesc] = useState<{ zh: string; en: string } | null>(null);
   const [images, setImages] = useState<ImageObject[]>([]);
@@ -315,6 +442,16 @@ export default function App() {
   const [showTrending, setShowTrending] = useState(false);
   const [isRefreshingTrending, setIsRefreshingTrending] = useState(false);
   const [trendingVideos, setTrendingVideos] = useState<TrendingVideo[]>(TRENDING_VIDEOS);
+  const [characters, setCharacters] = useState<Character[]>([]);
+  const [scenes, setScenes] = useState<Scene[]>([]);
+  const [showCharacterModal, setShowCharacterModal] = useState(false);
+  const [showSceneModal, setShowSceneModal] = useState(false);
+  const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
+  const [editingSceneId, setEditingSceneId] = useState<string | null>(null);
+  const [charForm, setCharForm] = useState({ name: "", description: "" });
+  const [sceneForm, setSceneForm] = useState({ name: "", description: "" });
+  const [showCharacterForm, setShowCharacterForm] = useState(false);
+  const [showSceneForm, setShowSceneForm] = useState(false);
 
   const handleRefreshTrending = async () => {
     if (isRefreshingTrending) return;
@@ -361,12 +498,30 @@ export default function App() {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      setImages((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
-
-        return arrayMove(items, oldIndex, newIndex);
-      });
+      // Handle Images
+      if (images.some(img => img.id === active.id)) {
+        setImages((items) => {
+          const oldIndex = items.findIndex((item) => item.id === active.id);
+          const newIndex = items.findIndex((item) => item.id === over.id);
+          return arrayMove(items, oldIndex, newIndex);
+        });
+      }
+      // Handle Characters
+      else if (characters.some(char => char.id === active.id)) {
+        setCharacters((items) => {
+          const oldIndex = items.findIndex((item) => item.id === active.id);
+          const newIndex = items.findIndex((item) => item.id === over.id);
+          return arrayMove(items, oldIndex, newIndex);
+        });
+      }
+      // Handle Scenes
+      else if (scenes.some(scene => scene.id === active.id)) {
+        setScenes((items) => {
+          const oldIndex = items.findIndex((item) => item.id === active.id);
+          const newIndex = items.findIndex((item) => item.id === over.id);
+          return arrayMove(items, oldIndex, newIndex);
+        });
+      }
     }
   }
 
@@ -419,7 +574,21 @@ export default function App() {
 
   const videoInputRef = useRef<HTMLInputElement>(null);
 
-  // Theme effect
+  // Persistence
+  useEffect(() => {
+    const savedChars = localStorage.getItem("director_characters");
+    const savedScenes = localStorage.getItem("director_scenes");
+    if (savedChars) setCharacters(JSON.parse(savedChars));
+    if (savedScenes) setScenes(JSON.parse(savedScenes));
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("director_characters", JSON.stringify(characters));
+  }, [characters]);
+
+  useEffect(() => {
+    localStorage.setItem("director_scenes", JSON.stringify(scenes));
+  }, [scenes]);
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.remove("light");
@@ -583,6 +752,24 @@ export default function App() {
     const savedYoutubeApiKey = localStorage.getItem("director_youtube_api_key");
     if (savedYoutubeApiKey) {
       setYoutubeApiKey(savedYoutubeApiKey);
+    }
+
+    const savedCharacters = localStorage.getItem("director_characters");
+    if (savedCharacters) {
+      try {
+        setCharacters(JSON.parse(savedCharacters));
+      } catch (e) {
+        console.error("Failed to parse characters", e);
+      }
+    }
+
+    const savedScenes = localStorage.getItem("director_scenes");
+    if (savedScenes) {
+      try {
+        setScenes(JSON.parse(savedScenes));
+      } catch (e) {
+        console.error("Failed to parse scenes", e);
+      }
     }
 
     // Migration: Compress existing history items if they are too large
@@ -761,8 +948,20 @@ export default function App() {
       .filter(img => img.keyword)
       .map(img => img.keyword!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     
-    const customRegexPart = customKeywords.length > 0 ? `|(@(${customKeywords.join('|')}))` : '';
-    const regex = new RegExp(`(@Image(\\d+))|(<<<image_(\\d+)>>>)${customRegexPart}`, 'g');
+    // Collect character names
+    const charKeywords = characters.map(c => c.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    // Collect scene names
+    const sceneKeywords = scenes.map(s => s.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
+    const movementKeywords = CAMERA_MOVEMENTS.map(m => t.movements[m.id as keyof typeof t.movements].split(/ [/(]/)[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
+    const imageRegexPart = customKeywords.length > 0 ? `|(@(${customKeywords.join('|')}))` : '';
+    const charRegexPart = charKeywords.length > 0 ? `|(@(${charKeywords.join('|')}))` : '';
+    const sceneRegexPart = sceneKeywords.length > 0 ? `|(@(${sceneKeywords.join('|')}))` : '';
+    const moveToRegexPart = movementKeywords.length > 0 ? `|(@(${movementKeywords.join('|')}))` : '';
+    
+    // Combining regex for all mentions
+    const regex = new RegExp(`(@Image(\\d+))|(<<<image_(\\d+)>>>)${imageRegexPart}${charRegexPart}${sceneRegexPart}${moveToRegexPart}`, 'g');
     
     const parts: (string | React.ReactNode)[] = [];
     let lastIndex = 0;
@@ -773,44 +972,67 @@ export default function App() {
       parts.push(text.substring(lastIndex, match.index));
       
       const tag = match[0];
-      let imgIdx = -1;
-
-      if (match[2] || match[4]) {
-        // Standard tags
-        imgIdx = parseInt(match[2] || match[4]) - 1;
-      } else if (match[6]) {
-        // Custom keyword
-        const keyword = match[6];
-        imgIdx = images.findIndex(img => img.keyword === keyword);
-      }
-
-      const img = imgIdx >= 0 ? images[imgIdx] : null;
       
-      if (img) {
-        // Calculate visual length for 'ch' unit, accounting for Chinese characters
-        const visualLength = tag.split('').reduce((acc, char) => acc + (char.charCodeAt(0) > 127 ? 2 : 1), 0);
-        
-        parts.push(
-          <span 
-            key={match.index} 
-            className="mention-chip"
-            style={{ 
-              width: `${visualLength}ch`,
-              fontSize: '14px', // Match textarea font size for accurate 'ch' unit
-            }}
-          >
-            {img.url ? (
-              <img src={img.url} className="w-3.5 h-3.5 rounded-sm object-cover shrink-0 border border-white/10" alt="" />
-            ) : (
-              <ImageIcon className="w-3.5 h-3.5 shrink-0 opacity-40" />
-            )}
-            <span className="truncate opacity-90 text-xs leading-none">
-              {img.keyword ? `@${img.keyword}` : `${uiLang === "zh" ? "图片" : "Image"}${imgIdx + 1}`}
+      // Determine match type
+      if (match[1] || match[3] || (match[5] && customKeywords.includes(match[6]))) {
+        // IMAGE MENTION
+        let imgIdx = -1;
+        if (match[2] || match[4]) {
+          imgIdx = parseInt(match[2] || match[4]) - 1;
+        } else if (match[6]) {
+          const keyword = match[6];
+          imgIdx = images.findIndex(img => img.keyword === keyword);
+        }
+
+        const img = imgIdx >= 0 ? images[imgIdx] : null;
+        if (img) {
+          parts.push(
+            <span key={match.index} className="inline-flex relative items-center">
+              <span className="opacity-0 pointer-events-none tracking-normal font-mono whitespace-pre">{tag}</span>
+              <span className="absolute left-0 mention-chip max-w-fit flex items-center pr-1.5">
+                {img.url ? (
+                  <img src={img.url} className="w-3.5 h-3.5 rounded-sm object-cover shrink-0 border border-white/10" alt="" />
+                ) : (
+                  <ImageIcon className="w-3.5 h-3.5 shrink-0 opacity-40 mx-0.5" />
+                )}
+                <span className="truncate opacity-90 text-xs leading-none max-w-[80px]">
+                  {img.keyword ? `@${img.keyword}` : `${uiLang === "zh" ? "图片" : "Image"}${imgIdx + 1}`}
+                </span>
+              </span>
             </span>
-          </span>
-        );
+          );
+        } else {
+          parts.push(tag);
+        }
       } else {
-        parts.push(tag);
+        // CHARACTER OR SCENE OR MOVEMENT MENTION
+        const name = tag.substring(1);
+        const char = characters.find(c => c.name === name);
+        const scene = scenes.find(s => s.name === name);
+        const movement = CAMERA_MOVEMENTS.find(m => t.movements[m.id as keyof typeof t.movements].split(/ [/(]/)[0] === name);
+
+        if (char || scene) {
+          parts.push(
+            <span 
+              key={match.index} 
+              className={`rounded-[3px] box-decoration-clone ring-1 ring-inset ${
+                char 
+                  ? 'bg-brand-primary/20 text-brand-primary ring-brand-primary/30' 
+                  : 'bg-brand-secondary/20 text-[#a8b8d0] ring-brand-secondary/30'
+              }`}
+            >
+              {tag}
+            </span>
+          );
+        } else if (movement) {
+          parts.push(
+            <span key={match.index} className="bg-amber-500/20 text-amber-500 ring-1 ring-inset ring-amber-500/30 rounded-[3px] box-decoration-clone">
+              {tag}
+            </span>
+          );
+        } else {
+          parts.push(tag);
+        }
       }
       
       lastIndex = regex.lastIndex;
@@ -1032,39 +1254,62 @@ export default function App() {
     };
   };
 
-  const insertMention = (imageIndex: number | "new" | string) => {
-    if (!mentionMenu || !textareaRef.current) return;
+  const insertMention = (value: number | "new" | string, type: 'image' | 'character' | 'scene' | 'movement' = 'image') => {
+    if (!textareaRef.current) return;
 
-    if (imageIndex === "new") {
-      fileInputRef.current?.click();
+    if (value === "new") {
+      if (type === 'image') {
+        fileInputRef.current?.click();
+      } else if (type === 'character') {
+        setShowCharacterModal(true);
+        setShowCharacterForm(true);
+        setEditingCharacterId(null);
+        setCharForm({ name: "", description: "" });
+      } else if (type === 'scene') {
+        setShowSceneModal(true);
+        setShowSceneForm(true);
+        setEditingSceneId(null);
+        setSceneForm({ name: "", description: "" });
+      }
       setMentionMenu(null);
       return;
     }
 
-    const imgIdx = typeof imageIndex === 'number' ? imageIndex : 0;
-    const tag = selectedModel === "Seedance 2.0" 
-      ? `@Image${imgIdx + 1}` 
-      : `<<<image_${imgIdx + 1}>>>`;
-    
-    if (typeof imageIndex === 'string') {
-      // If it's a custom keyword, we still use the @keyword format
-      // but the logic below will handle it
+    let tagToInsert = "";
+    if (type === 'image') {
+      const imgIdx = typeof value === 'number' ? value : 0;
+      tagToInsert = selectedModel === "Seedance 2.0" 
+        ? `@Image${imgIdx + 1}` 
+        : `<<<image_${imgIdx + 1}>>>`;
+    } else {
+      tagToInsert = `@${value}`;
     }
     
-    const tagToInsert = typeof imageIndex === 'string' ? `@${imageIndex}` : tag;
-    const before = userInput.substring(0, Math.max(0, mentionMenu.index - 1));
-    const after = userInput.substring(mentionMenu.index);
-    const newValue = before + tagToInsert + " " + after;
+    let newValue = "";
+    let newCursorPos = 0;
+
+    if (mentionMenu) {
+      const before = userInput.substring(0, Math.max(0, mentionMenu.index - 1));
+      const after = userInput.substring(mentionMenu.index);
+      newValue = before + tagToInsert + " " + after;
+      newCursorPos = before.length + tagToInsert.length + 1;
+    } else {
+      const cursorPosition = textareaRef.current.selectionStart;
+      const before = userInput.substring(0, cursorPosition);
+      const after = userInput.substring(cursorPosition);
+      newValue = before + tagToInsert + " " + after;
+      newCursorPos = before.length + tagToInsert.length + 1;
+    }
     
     setUserInput(newValue);
     setMentionMenu(null);
+    setShowCameraPopover(false);
     
     // Refocus and set cursor
     setTimeout(() => {
       if (textareaRef.current) {
         textareaRef.current.focus();
-        const newPos = before.length + tagToInsert.length + 1;
-        textareaRef.current.setSelectionRange(newPos, newPos);
+        textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
       }
     }, 0);
   };
@@ -1140,7 +1385,9 @@ export default function App() {
         selectedTechnique ? t.techniques[selectedTechnique as keyof typeof t.techniques] : undefined,
         isDurationEnabled && totalDuration ? parseInt(totalDuration, 10) : undefined,
         isShotCountEnabled && manualShotCount ? parseInt(manualShotCount, 10) : undefined,
-        selectedVisualStyle || undefined
+        selectedVisualStyle || undefined,
+        characters,
+        scenes
       );
       setResult(res);
       
@@ -1303,6 +1550,7 @@ export default function App() {
     setSelectedLanguage("Chinese");
     setSelectedTechnique("");
     setSelectedVisualStyle("");
+    setShowCameraPopover(false);
     setIsDurationEnabled(false);
     setTotalDuration("");
     setImages([]);
@@ -1367,29 +1615,57 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 5 }}
             style={{ left: mentionMenu.x, top: mentionMenu.y }}
-            className="fixed z-[100] w-64 bg-brand-surface border border-brand-border rounded-lg shadow-2xl overflow-hidden flex flex-col"
+            className="fixed z-[100] w-80 bg-brand-surface border border-brand-border rounded-lg shadow-2xl overflow-hidden flex flex-col"
           >
             <div className="p-3 bg-[var(--input-bg)]/40 border-b border-brand-border">
               <span className="text-sm font-bold text-muted uppercase tracking-widest">{t.mentionTitle}</span>
             </div>
             <div className="max-h-64 overflow-y-auto p-1">
               <button
-                onClick={() => insertMention("new")}
+                onClick={() => insertMention("new", "image")}
                 className="w-full flex items-center gap-3 p-2 hover:bg-brand-border/30 rounded transition-colors text-left"
               >
-                <div className="w-8 h-8 rounded bg-brand-border/50 flex items-center justify-center">
-                  <X className="w-4 h-4 rotate-45" />
+                <div className="w-8 h-8 rounded bg-brand-primary/20 flex items-center justify-center">
+                  <ImageIcon className="w-4 h-4 text-brand-primary" />
                 </div>
                 <div className="flex flex-col">
                   <span className="text-sm font-bold">{t.createSubject}</span>
                   <span className="text-sm text-muted">{t.addFromLocal}</span>
                 </div>
               </button>
+
+              <button
+                onClick={() => insertMention("new", "character")}
+                className="w-full flex items-center gap-3 p-2 hover:bg-brand-border/30 rounded transition-colors text-left"
+              >
+                <div className="w-8 h-8 rounded bg-brand-primary/20 flex items-center justify-center">
+                  <UserPlus className="w-4 h-4 text-brand-primary" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold">{uiLang === 'zh' ? '定义新角色' : 'Define New Character'}</span>
+                  <span className="text-sm text-muted">{uiLang === 'zh' ? '保持角色长相一致' : 'Maintain character consistency'}</span>
+                </div>
+              </button>
+
+              <button
+                onClick={() => insertMention("new", "scene")}
+                className="w-full flex items-center gap-3 p-2 hover:bg-brand-border/30 rounded transition-colors text-left"
+              >
+                <div className="w-8 h-8 rounded bg-brand-primary/20 flex items-center justify-center">
+                  <Map className="w-4 h-4 text-brand-primary" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold">{uiLang === 'zh' ? '锁定新场景' : 'Lock New Scene'}</span>
+                  <span className="text-sm text-muted">{uiLang === 'zh' ? '保持环境风格一致' : 'Maintain environment consistency'}</span>
+                </div>
+              </button>
+
+              <div className="h-[1px] bg-brand-border my-1" />
               
               {images.map((img, idx) => (
                 <button
-                  key={idx}
-                  onClick={() => insertMention(img.keyword || idx)}
+                  key={`img-${idx}`}
+                  onClick={() => insertMention(img.keyword || idx, 'image')}
                   className="w-full flex items-center gap-3 p-2 hover:bg-brand-border/30 rounded transition-colors text-left"
                 >
                   <img src={img.url} className="w-8 h-8 rounded object-cover border border-brand-border" alt="" />
@@ -1397,13 +1673,110 @@ export default function App() {
                     <span className="text-sm font-medium">
                       {img.keyword ? `@${img.keyword}` : `${t.imageLabel}${idx + 1}`}
                     </span>
-                    {img.keyword && (
-                      <span className="text-xs text-dim uppercase tracking-tighter">
-                        {t.imageLabel}{idx + 1}
-                      </span>
-                    )}
                   </div>
                 </button>
+              ))}
+
+              {characters.map((char) => (
+                <div key={char.id} className="group relative">
+                  <div
+                    onClick={() => insertMention(char.name, 'character')}
+                    className="w-full flex items-center justify-between p-2 hover:bg-brand-border/30 rounded transition-colors text-left cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <div className="w-8 h-8 rounded bg-brand-primary/20 flex items-center justify-center shrink-0">
+                        <UserPlus className="w-4 h-4 text-brand-primary" />
+                      </div>
+                      <div className="flex flex-col overflow-hidden">
+                        <span className="text-sm font-medium truncate">@{char.name}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0 ml-2">
+                      <span className="text-[10px] text-dim whitespace-nowrap">
+                        {uiLang === 'zh' ? '角色' : 'Char'}
+                      </span>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingCharacterId(char.id);
+                            setCharForm({ name: char.name, description: char.description });
+                            setShowCharacterForm(true);
+                            setShowCharacterModal(true);
+                            setMentionMenu(null);
+                          }}
+                          className="p-1 hover:bg-brand-border/50 rounded text-muted hover:text-brand-primary transition-colors"
+                          title={uiLang === 'zh' ? '编辑' : 'Edit'}
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(uiLang === 'zh' ? `确认删除角色 "${char.name}"？` : `Delete character "${char.name}"?`)) {
+                              setCharacters(prev => prev.filter(c => c.id !== char.id));
+                            }
+                          }}
+                          className="p-1 hover:bg-brand-border/50 rounded text-muted hover:text-red-500 transition-colors"
+                          title={uiLang === 'zh' ? '删除' : 'Delete'}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {scenes.map((scene) => (
+                <div key={scene.id} className="group relative">
+                  <div
+                    onClick={() => insertMention(scene.name, 'scene')}
+                    className="w-full flex items-center justify-between p-2 hover:bg-brand-border/30 rounded transition-colors text-left cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <div className="w-8 h-8 rounded bg-brand-text/10 flex items-center justify-center shrink-0">
+                        <Map className="w-4 h-4 text-brand-text" />
+                      </div>
+                      <div className="flex flex-col overflow-hidden">
+                        <span className="text-sm font-medium truncate">@{scene.name}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0 ml-2">
+                      <span className="text-[10px] text-dim whitespace-nowrap">
+                        {uiLang === 'zh' ? '场景' : 'Scene'}
+                      </span>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingSceneId(scene.id);
+                            setSceneForm({ name: scene.name, description: scene.description });
+                            setShowSceneForm(true);
+                            setShowSceneModal(true);
+                            setMentionMenu(null);
+                          }}
+                          className="p-1 hover:bg-brand-border/50 rounded text-muted hover:text-brand-primary transition-colors"
+                          title={uiLang === 'zh' ? '编辑' : 'Edit'}
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(uiLang === 'zh' ? `确认删除场景 "${scene.name}"？` : `Delete scene "${scene.name}"?`)) {
+                              setScenes(prev => prev.filter(s => s.id !== scene.id));
+                            }
+                          }}
+                          className="p-1 hover:bg-brand-border/50 rounded text-muted hover:text-red-500 transition-colors"
+                          title={uiLang === 'zh' ? '删除' : 'Delete'}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           </motion.div>
@@ -2535,6 +2908,103 @@ export default function App() {
                     className="mention-textarea relative z-10"
                     style={{ height: '220px', minHeight: '100px', maxHeight: '900px' }}
                   />
+
+                  {/* Camera Movement Trigger Icon - Bottom Left */}
+                  <div className="absolute bottom-3 left-3 flex items-center gap-2 z-20">
+                    <div className="relative">
+                      <button 
+                        onClick={() => setShowCameraPopover(!showCameraPopover)}
+                        className="p-2 rounded-lg border transition-all flex items-center justify-center gap-2 group bg-brand-surface/80 backdrop-blur-md border-brand-border text-muted hover:border-brand-primary/50 hover:text-brand-primary"
+                        title={t.cameraMovement}
+                      >
+                        <Video className="w-4 h-4 text-muted group-hover:text-brand-primary" />
+                        <ChevronDown className={`w-3 h-3 transition-transform ${showCameraPopover ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      {/* Camera Movements List */}
+                      <AnimatePresence>
+                        {showCameraPopover && (
+                          <>
+                            <div 
+                              className="fixed inset-0 z-10" 
+                              onClick={() => setShowCameraPopover(false)}
+                            />
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                              className="absolute bottom-full left-0 mb-3 w-[320px] bg-brand-surface border border-brand-border rounded-xl shadow-2xl z-20 flex flex-col overflow-hidden"
+                            >
+                              <div className="console-header p-4 border-b border-brand-border bg-brand-bg/40 flex items-center justify-between shrink-0">
+                                <div className="flex items-center gap-2">
+                                  <Video className="w-4 h-4 text-brand-primary" />
+                                  <span className="text-xs uppercase tracking-widest text-[var(--text-muted)] font-mono font-bold">{t.cameraMovement}</span>
+                                </div>
+                              </div>
+                              <div className="p-4 grid grid-cols-5 gap-2 bg-brand-surface/50">
+                                {CAMERA_MOVEMENTS.map((move) => {
+                                  const LocalIcon = move.id === 'zoomIn' ? Maximize : 
+                                                  move.id === 'zoomOut' ? Minimize :
+                                                  move.id === 'panLeft' ? ArrowLeft :
+                                                  move.id === 'panRight' ? ArrowRight :
+                                                  move.id === 'tiltUp' ? ArrowUp :
+                                                  move.id === 'tiltDown' ? ArrowDown :
+                                                  move.id === 'trackLeft' ? ChevronsLeft :
+                                                  move.id === 'trackRight' ? ChevronsRight :
+                                                  move.id === 'pedestalUp' ? MoveUp :
+                                                  move.id === 'pedestalDown' ? MoveDown : Video;
+
+                                  return (
+                                    <button
+                                      key={move.id}
+                                      onClick={() => {
+                                        insertMention(t.movements[move.id as keyof typeof t.movements].split(/ [/(]/)[0], 'movement');
+                                        setShowCameraPopover(false);
+                                      }}
+                                      className="aspect-square rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all group relative overflow-hidden bg-brand-surface border-brand-border text-dim hover:border-brand-primary/30 hover:bg-brand-primary/10 hover:text-brand-primary"
+                                      title={t.movements[move.id as keyof typeof t.movements]}
+                                    >
+                                      <LocalIcon className="w-6 h-6 transition-transform group-hover:scale-110 text-muted group-hover:text-brand-primary" />
+                                      <span className="text-[10px] font-black uppercase text-center px-0.5 truncate w-full text-dim group-hover:text-brand-primary">
+                                        {t.movements[move.id as keyof typeof t.movements].split(/ [/(]/)[0]}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </motion.div>
+                          </>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    <button 
+                      onClick={() => {
+                        setEditingCharacterId(null);
+                        setCharForm({ name: "", description: "" });
+                        setShowCharacterModal(true);
+                      }}
+                      className="p-2 rounded-lg border transition-all flex items-center justify-center gap-2 group bg-brand-surface/80 backdrop-blur-md border-brand-border text-muted hover:border-brand-primary/50 hover:text-brand-primary"
+                      title={uiLang === 'zh' ? '定义角色' : 'Define Character'}
+                    >
+                      <UserPlus className="w-4 h-4 text-muted group-hover:text-brand-primary" />
+                      {characters.length > 0 && <span className="text-xs font-bold leading-none">{characters.length}</span>}
+                    </button>
+                    
+                    <button 
+                      onClick={() => {
+                        setEditingSceneId(null);
+                        setSceneForm({ name: "", description: "" });
+                        setShowSceneModal(true);
+                      }}
+                      className="p-2 rounded-lg border transition-all flex items-center justify-center gap-2 group bg-brand-surface/80 backdrop-blur-md border-brand-border text-muted hover:border-brand-text/50 hover:text-brand-text"
+                      title={uiLang === 'zh' ? '锁定场景' : 'Lock Scene'}
+                    >
+                      <Map className="w-4 h-4 text-muted group-hover:text-brand-text" />
+                      {scenes.length > 0 && <span className="text-xs font-bold leading-none">{scenes.length}</span>}
+                    </button>
+                  </div>
+
                   <SmartSuggest 
                     userInput={userInput}
                     suggestedContinuations={suggestedContinuations}
@@ -2644,6 +3114,8 @@ export default function App() {
                   )}
                 </div>
               </div>
+
+              {/* Removed visible character and scene library lists from here to save vertical space. Data is preserved in state. */}
 
               {error && (
                 <div className="text-red-500 text-sm font-mono bg-red-500/10 p-2 border border-red-500/20 rounded">
@@ -3138,6 +3610,18 @@ export default function App() {
                         <p className="label-micro mb-1">{t.shots}</p>
                         <p className="text-sm font-bold">{result?.parameters.shotCount}</p>
                       </div>
+                      {result?.parameters.technique && (
+                        <div className="bg-[var(--input-bg)] p-3 rounded border border-brand-border">
+                          <p className="label-micro mb-1">{t.videoTechnique}</p>
+                          <p className="text-sm font-bold truncate" title={result.parameters.technique}>{result.parameters.technique}</p>
+                        </div>
+                      )}
+                      {result?.parameters.visualStyle && (
+                        <div className="bg-[var(--input-bg)] p-3 rounded border border-brand-border h-full flex flex-col justify-center">
+                          <p className="label-micro mb-1">{t.visualStyle}</p>
+                          <p className="text-sm font-bold truncate leading-tight" title={result.parameters.visualStyle}>{result.parameters.visualStyle}</p>
+                        </div>
+                      )}
                     </div>
 
                     {/* Suggestions */}
@@ -3513,6 +3997,386 @@ export default function App() {
               <p className="text-white/40 text-sm font-mono uppercase tracking-widest">
                 {uiLang === 'zh' ? '滚动滚轮或使用按钮缩放' : 'Scroll or use buttons to zoom'}
               </p>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Character Library Modal */}
+      <AnimatePresence>
+        {showCharacterModal && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowCharacterModal(false);
+                setEditingCharacterId(null);
+                setCharForm({ name: "", description: "" });
+                setShowCharacterForm(false);
+              }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className={`relative w-full max-w-sm bg-brand-surface border border-brand-border rounded-xl shadow-2xl overflow-hidden flex flex-col ${!showCharacterForm && characters.length > 5 ? 'max-h-[580px]' : 'max-h-[80vh]'}`}
+            >
+              <div className="p-4 border-b border-brand-border bg-brand-primary/10 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <UserPlus className="w-4 h-4 text-brand-primary" />
+                    <span className="label-micro">{uiLang === 'zh' ? '添加角色定义' : 'Add Character Definition'}</span>
+                  </div>
+                  {!showCharacterForm && characters.length > 0 && (
+                     <button 
+                       onClick={() => {
+                         setShowCharacterForm(true);
+                         setEditingCharacterId(null);
+                         setCharForm({ name: "", description: "" });
+                       }}
+                       className="flex items-center gap-1 px-2 py-0.5 rounded bg-brand-primary text-black text-[10px] font-bold hover:bg-brand-primary/90 transition-all"
+                     >
+                       <Plus className="w-3 h-3" />
+                       {uiLang === 'zh' ? '创建新角色' : 'Create New Character'}
+                     </button>
+                  )}
+                </div>
+                <button onClick={() => {
+                    setShowCharacterModal(false);
+                    setEditingCharacterId(null);
+                    setCharForm({ name: "", description: "" });
+                    setShowCharacterForm(false);
+                  }} className="text-muted hover:text-main">
+                    <X className="w-4 h-4" />
+                  </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6">
+                <AnimatePresence mode="wait">
+                  {showCharacterForm ? (
+                    <motion.div 
+                      key="form"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="space-y-4"
+                    >
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-muted uppercase tracking-widest">
+                          {uiLang === 'zh' ? '角色名称 (@name)' : 'Name (@name)'}
+                        </label>
+                        <input 
+                          type="text"
+                          value={charForm.name}
+                          onChange={(e) => setCharForm(prev => ({ ...prev, name: e.target.value.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, "") }))}
+                          placeholder={uiLang === 'zh' ? '角色名(勿含空格)' : 'Name (No spaces)'}
+                          className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-base focus:border-brand-primary outline-none transition-all font-mono"
+                          autoFocus
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-muted uppercase tracking-widest">
+                          {uiLang === 'zh' ? '详细描述' : 'Description'}
+                        </label>
+                        <textarea 
+                          value={charForm.description}
+                          onChange={(e) => setCharForm(prev => ({ ...prev, description: e.target.value }))}
+                          placeholder={uiLang === 'zh' ? '描述长相、服装、性格特征...' : 'Describe looks, clothing...'}
+                          className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-sm focus:border-brand-primary outline-none transition-all h-32 resize-none"
+                        />
+                      </div>
+
+                      <div className="flex gap-3 pt-2">
+                        <button 
+                          onClick={() => {
+                            setShowCharacterForm(false);
+                            setEditingCharacterId(null);
+                            setCharForm({ name: "", description: "" });
+                          }}
+                          className="flex-1 py-2.5 rounded-lg border border-brand-border text-sm font-bold hover:bg-brand-border/30 transition-all font-mono"
+                        >
+                          {t.cancel}
+                        </button>
+                        <button 
+                          onClick={() => {
+                            if (!charForm.name || !charForm.description) return;
+                            if (editingCharacterId) {
+                              setCharacters(prev => prev.map(c => c.id === editingCharacterId ? { ...c, ...charForm } : c));
+                            } else {
+                              const newChar: Character = {
+                                id: Math.random().toString(36).substring(7),
+                                name: charForm.name,
+                                description: charForm.description
+                              };
+                              setCharacters(prev => [...prev, newChar]);
+                            }
+                            setShowCharacterForm(false);
+                            setEditingCharacterId(null);
+                            setCharForm({ name: "", description: "" });
+                          }}
+                          disabled={!charForm.name || !charForm.description}
+                          className="flex-1 py-2.5 rounded-lg bg-brand-primary text-black text-sm font-bold hover:bg-brand-primary/90 disabled:opacity-50 transition-all font-mono"
+                        >
+                          {t.save}
+                        </button>
+                      </div>
+                    </motion.div>
+                  ) : characters.length === 0 ? (
+                    <motion.div 
+                      key="empty"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="flex flex-col items-center justify-center py-12 text-center"
+                    >
+                      <div className="w-16 h-16 rounded-full bg-brand-primary/5 flex items-center justify-center mb-4">
+                        <UserPlus className="w-8 h-8 text-brand-primary/30" />
+                      </div>
+                      <h4 className="text-sm font-bold text-main mb-2">{uiLang === 'zh' ? '暂无角色定义' : 'No Characters Yet'}</h4>
+                      <p className="text-xs text-muted mb-6 max-w-[200px]">
+                        {uiLang === 'zh' ? '定义角色后可以在脚本中通过 @ 快速引用' : 'Define characters to mention them in your prompts.'}
+                      </p>
+                      <button 
+                        onClick={() => setShowCharacterForm(true)}
+                        className="px-6 py-2.5 rounded-full bg-brand-primary text-black text-sm font-bold hover:bg-brand-primary/90 transition-all flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        {uiLang === 'zh' ? '创建新角色' : 'Create New Character'}
+                      </button>
+                    </motion.div>
+                  ) : (
+                    <motion.div 
+                      key="list"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="space-y-3"
+                    >
+                      <DndContext 
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <SortableContext 
+                          items={characters.map(c => c.id)}
+                          strategy={rectSortingStrategy}
+                        >
+                          <div className="grid grid-cols-1 gap-3">
+                            {characters.map((char) => (
+                              <SortableCharacter 
+                                key={char.id} 
+                                character={char} 
+                                onRemove={() => {
+                                  if (window.confirm(uiLang === 'zh' ? `确认删除角色 "${char.name}"？` : `Delete character "${char.name}"?`)) {
+                                    setCharacters(prev => prev.filter(c => c.id !== char.id));
+                                  }
+                                }}
+                                onEdit={() => {
+                                  setEditingCharacterId(char.id);
+                                  setCharForm({ name: char.name, description: char.description });
+                                  setShowCharacterForm(true);
+                                }}
+                              />
+                            ))}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Scene Lock Modal */}
+      <AnimatePresence>
+        {showSceneModal && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowSceneModal(false);
+                setEditingSceneId(null);
+                setSceneForm({ name: "", description: "" });
+                setShowSceneForm(false);
+              }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className={`relative w-full max-w-sm bg-brand-surface border border-brand-border rounded-xl shadow-2xl overflow-hidden flex flex-col ${!showSceneForm && scenes.length > 5 ? 'max-h-[580px]' : 'max-h-[80vh]'}`}
+            >
+              <div className="p-4 border-b border-brand-border bg-brand-secondary/10 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <Map className="w-4 h-4 text-brand-text" />
+                    <span className="label-micro">{uiLang === 'zh' ? '添加固定场景' : 'Add Fixed Scene'}</span>
+                  </div>
+                  {!showSceneForm && scenes.length > 0 && (
+                     <button 
+                       onClick={() => {
+                         setShowSceneForm(true);
+                         setEditingSceneId(null);
+                         setSceneForm({ name: "", description: "" });
+                       }}
+                       className="flex items-center gap-1 px-2 py-0.5 rounded bg-brand-text text-black text-[10px] font-bold hover:bg-brand-text/90 transition-all"
+                     >
+                       <Plus className="w-3 h-3" />
+                       {uiLang === 'zh' ? '创建新场景' : 'Create New Scene'}
+                     </button>
+                  )}
+                </div>
+                <button onClick={() => {
+                    setShowSceneModal(false);
+                    setEditingSceneId(null);
+                    setSceneForm({ name: "", description: "" });
+                    setShowSceneForm(false);
+                  }} className="text-muted hover:text-main">
+                    <X className="w-4 h-4" />
+                  </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6">
+                <AnimatePresence mode="wait">
+                  {showSceneForm ? (
+                    <motion.div 
+                      key="form"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="space-y-4"
+                    >
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-muted uppercase tracking-widest">
+                          {uiLang === 'zh' ? '场景标签 (@scene)' : 'Tag (@scene)'}
+                        </label>
+                        <input 
+                          type="text"
+                          value={sceneForm.name}
+                          onChange={(e) => setSceneForm(prev => ({ ...prev, name: e.target.value.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, "") }))}
+                          placeholder={uiLang === 'zh' ? '场景名(勿含空格)' : 'Tag Name (No spaces)'}
+                          className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-base focus:border-brand-primary outline-none transition-all font-mono"
+                          autoFocus
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-muted uppercase tracking-widest">
+                          {uiLang === 'zh' ? '环境与氛围描述' : 'Description'}
+                        </label>
+                        <textarea 
+                          value={sceneForm.description}
+                          onChange={(e) => setSceneForm(prev => ({ ...prev, description: e.target.value }))}
+                          placeholder={uiLang === 'zh' ? '描述天气、光影、建筑风格...' : 'Describe weather, architecture...'}
+                          className="w-full bg-[var(--input-bg)] border border-brand-border rounded-lg px-4 py-3 text-sm focus:border-brand-primary outline-none transition-all h-32 resize-none"
+                        />
+                      </div>
+
+                      <div className="flex gap-3 pt-2">
+                        <button 
+                          onClick={() => {
+                            setShowSceneForm(false);
+                            setEditingSceneId(null);
+                            setSceneForm({ name: "", description: "" });
+                          }}
+                          className="flex-1 py-2.5 rounded-lg border border-brand-border text-sm font-bold hover:bg-brand-border/30 transition-all font-mono"
+                        >
+                          {t.cancel}
+                        </button>
+                        <button 
+                          onClick={() => {
+                            if (!sceneForm.name || !sceneForm.description) return;
+                            if (editingSceneId) {
+                              setScenes(prev => prev.map(s => s.id === editingSceneId ? { ...s, ...sceneForm } : s));
+                            } else {
+                              const newScene: Scene = {
+                                id: Math.random().toString(36).substring(7),
+                                name: sceneForm.name,
+                                description: sceneForm.description
+                              };
+                              setScenes(prev => [...prev, newScene]);
+                            }
+                            setShowSceneForm(false);
+                            setEditingSceneId(null);
+                            setSceneForm({ name: "", description: "" });
+                          }}
+                          disabled={!sceneForm.name || !sceneForm.description}
+                          className="flex-1 py-2.5 rounded-lg bg-brand-primary text-black text-sm font-bold hover:bg-brand-primary/90 disabled:opacity-50 transition-all font-mono"
+                        >
+                          {t.save}
+                        </button>
+                      </div>
+                    </motion.div>
+                  ) : scenes.length === 0 ? (
+                    <motion.div 
+                      key="empty"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="flex flex-col items-center justify-center py-12 text-center"
+                    >
+                      <div className="w-16 h-16 rounded-full bg-brand-secondary/5 flex items-center justify-center mb-4">
+                        <Map className="w-8 h-8 text-brand-text/30" />
+                      </div>
+                      <h4 className="text-sm font-bold text-main mb-2">{uiLang === 'zh' ? '暂无场景定义' : 'No Scenes Yet'}</h4>
+                      <p className="text-xs text-muted mb-6 max-w-[200px]">
+                        {uiLang === 'zh' ? '锁定场景后可以在脚本中通过 @ 快速引用' : 'Fix scenes to mention them in your prompts.'}
+                      </p>
+                      <button 
+                        onClick={() => setShowSceneForm(true)}
+                        className="px-6 py-2.5 rounded-full bg-brand-text text-black text-sm font-bold hover:bg-brand-text/90 transition-all flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        {uiLang === 'zh' ? '创建新场景' : 'Create New Scene'}
+                      </button>
+                    </motion.div>
+                  ) : (
+                    <motion.div 
+                      key="list"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="space-y-3"
+                    >
+                      <DndContext 
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <SortableContext 
+                          items={scenes.map(s => s.id)}
+                          strategy={rectSortingStrategy}
+                        >
+                          <div className="grid grid-cols-1 gap-3">
+                            {scenes.map((scene) => (
+                              <SortableScene 
+                                key={scene.id} 
+                                scene={scene} 
+                                onRemove={() => {
+                                  if (window.confirm(uiLang === 'zh' ? `确认删除场景 "${scene.name}"？` : `Delete scene "${scene.name}"?`)) {
+                                    setScenes(prev => prev.filter(s => s.id !== scene.id));
+                                  }
+                                }}
+                                onEdit={() => {
+                                  setEditingSceneId(scene.id);
+                                  setSceneForm({ name: scene.name, description: scene.description });
+                                  setShowSceneForm(true);
+                                }}
+                              />
+                            ))}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </motion.div>
           </div>
         )}

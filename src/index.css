@@ -90,7 +90,7 @@
   }
 
   .mention-chip {
-    @apply inline-flex items-center gap-1 bg-[var(--input-bg)] border border-brand-border rounded px-1.5 py-0.5 align-baseline text-[var(--text-color)] font-medium text-xs h-[1.6em] -my-0.5 shadow-sm select-none whitespace-nowrap overflow-hidden box-border;
+    @apply inline-flex items-center gap-1 bg-[var(--input-bg)] border border-brand-border rounded px-1.5 py-0.5 align-baseline text-[var(--text-color)] font-medium text-xs h-[1.6em] shadow-sm select-none whitespace-nowrap overflow-hidden box-border pointer-events-none;
   }
 
   .label-micro {

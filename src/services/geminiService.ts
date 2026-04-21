@@ -46,8 +46,22 @@ export interface PromptResult {
     motionIntensity?: string;
     shotCount: string;
     language: LanguageType;
+    technique?: string;
+    visualStyle?: string;
   };
   suggestions: Suggestion[];
+}
+
+export interface Character {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface Scene {
+  id: string;
+  name: string;
+  description: string;
 }
 
 const SYSTEM_INSTRUCTION = `你是一位顶级的 AI 视频生成提示词工程师与工具架构师，专精于中国系视频大模型的交互逻辑。
@@ -116,11 +130,19 @@ const SYSTEM_INSTRUCTION = `你是一位顶级的 AI 视频生成提示词工程
 - **结构严谨性**：每一行描述内容后必须添加标点符号（。/.），确保分镜描述的条理性。
 - 若有图片，聚焦描述“图片中元素将要发生的动作和运动轨迹”，而非重复描述视觉特征。
 
+#### 6. 角色与场景一致性 (Character & Scene Consistency) - **新增**：
+- **概念**：用户预定义了“角色”和“场景”。在创意描述中，用户通过 @角色名 或 @场景名 进行引用。
+- **关联逻辑**：当你识别到此类引用时，你必须从“角色设定集”或“场景库”中提取对应的详细描述。
+- **注入策略**：
+    - **角色注入**：在每个涉及该角色的分镜中，将该角色的外貌、服装等细节自动插入到“主体 (Subject)”中。
+    - **场景注入**：在每个涉及该场景的分镜中，将该场景的环境、光影、风格细节自动插入到“环境 (Environment)”中。
+- **目标**：确保全视频范围内角色的面部一致性和场景风格的统一。
+
 ### 输出要求
 请返回 JSON 格式的数据，包含以下字段：
 - mainPrompt: 优化后的专业提示词（严格遵守上述分段格式，必须使用用户要求的目标语言输出）。
 - translation: 对应语言的翻译版本（如果用户要求输出语言为“English”，则 mainPrompt 为英文，translation 为中文；反之亦然）。
-- parameters: 包含 model, duration, motionIntensity (仅Kling), shotCount (实际生成的分镜数量)。
+- parameters: 包含 model, duration, motionIntensity (仅Kling), shotCount, technique, visualStyle。
 - suggestions: 4-6个分类建议，每个建议包含 category (如 "Cinematic", "Action", "Atmosphere", "Lighting") 和 text (具体的微调指令)。`;
 
 export interface ImageObject {
@@ -296,7 +318,9 @@ async function callAnthropic(
   technique?: string,
   totalDuration?: number,
   shotCount?: number,
-  visualStyle?: string
+  visualStyle?: string,
+  characters?: Character[],
+  scenes?: Scene[]
 ): Promise<PromptResult> {
   try {
     const baseUrl = apiConfig?.baseUrl || "https://api.anthropic.com/v1";
@@ -307,6 +331,9 @@ async function callAnthropic(
       const keywordInfo = img.keyword ? ` (用户引用关键词: @${img.keyword})` : "";
       return `参考图片 ${idx + 1}: 标签为 ${defaultTag}${keywordInfo}。`;
     }).join("\n");
+
+    const charContext = (characters || []).map(c => `角色设定 [@${c.name}]: ${c.description}`).join("\n");
+    const sceneContext = (scenes || []).map(s => `场景库 [@${s.name}]: ${s.description}`).join("\n");
 
     const userContent: any[] = [
       { 
@@ -322,13 +349,18 @@ async function callAnthropic(
 - 分镜数量: ${shotCount || "自动推导（如果没有指定）"}
 - 参考素材: 已提供图片及描述如下
 
+## 角色与场景库 (CONSISTENCY DATA)
+${charContext || "（无预定义角色）"}
+${sceneContext || "（无预定义场景）"}
+
 ## 规划逻辑
 1. 严禁使用固定模板。
-2. 结合时长 ${totalDuration || ""}、手法 ${technique || ""} 和创意复杂度决定分镜数。
-3. 如果指定了分镜数量 ${shotCount || ""}，则必须严格输出对应数量的分镜。
-4. 确保分镜时长总和一致，且分镜标题必须使用区间时长格式（如 2-4s），严禁使用固定时长。
-5. 必须遵守语言设定：如果输出语言为 English，则 mainPrompt 必须是全英文提示词。
-6. 所有的结构化标签内容必须以句号结尾。
+- **结合时长 ${totalDuration || ""}、手法 ${technique || ""} 和创意复杂度决定分镜数。
+- **如果指定了分镜数量 ${shotCount || ""}，则必须严格输出对应数量的分镜。
+- **确保分镜时长总和一致，且分镜标题必须使用区间时长格式（如 2-4s），严禁使用固定时长。
+- **必须遵守语言设定：如果输出语言为 English，则 mainPrompt 必须是全英文提示词。
+- **关健：如果用户引用了 @角色名 或 @场景名，请务必从上述库中提取细节注入到每个分镜的描述中。**
+- **所有的结构化标签内容必须以句号结尾。
 
 ${imageContext}` 
       }
@@ -393,6 +425,8 @@ ${imageContext}`
       const jsonStr = jsonMatch ? jsonMatch[0] : content;
       const parsed = JSON.parse(jsonStr) as PromptResult;
       parsed.parameters.language = language;
+      if (technique) parsed.parameters.technique = technique;
+      if (visualStyle) parsed.parameters.visualStyle = visualStyle;
       return parsed;
     } catch (parseError) {
       console.error("Anthropic Parse Error. Raw content:", content);
@@ -412,7 +446,9 @@ export async function generateVideoPrompt(
   technique?: string,
   totalDuration?: number,
   shotCount?: number,
-  visualStyle?: string
+  visualStyle?: string,
+  characters?: Character[],
+  scenes?: Scene[]
 ): Promise<PromptResult> {
   // Normalize images to ImageObject[]
   const normalizedImages: ImageObject[] = (images || []).map(img => {
@@ -423,20 +459,20 @@ export async function generateVideoPrompt(
   // If custom API is provided and has a key, use the appropriate provider
   if (apiConfig && apiConfig.apiKey) {
     if (apiConfig.provider === "openai" || apiConfig.provider === "doubao" || apiConfig.provider === "custom") {
-      return callOpenAICompatible(userInput, model, language, normalizedImages, apiConfig, technique, totalDuration, shotCount, visualStyle);
+      return callOpenAICompatible(userInput, model, language, normalizedImages, apiConfig, technique, totalDuration, shotCount, visualStyle, characters, scenes);
     }
     if (apiConfig.provider === "anthropic") {
-      return callAnthropic(userInput, model, language, normalizedImages, apiConfig, technique, totalDuration, shotCount, visualStyle);
+      return callAnthropic(userInput, model, language, normalizedImages, apiConfig, technique, totalDuration, shotCount, visualStyle, characters, scenes);
     }
     // For Gemini, we could re-initialize the client with the user's key
     if (apiConfig.provider === "gemini") {
       const userAi = new GoogleGenAI({ apiKey: apiConfig.apiKey });
-      return runGeminiGeneration(userAi, userInput, model, language, normalizedImages, apiConfig.modelName, technique, totalDuration, shotCount, visualStyle);
+      return runGeminiGeneration(userAi, userInput, model, language, normalizedImages, apiConfig.modelName, technique, totalDuration, shotCount, visualStyle, characters, scenes);
     }
   }
 
   // Default to system Gemini
-  return runGeminiGeneration(getAiClient(), userInput, model, language, normalizedImages, undefined, technique, totalDuration, shotCount, visualStyle);
+  return runGeminiGeneration(getAiClient(), userInput, model, language, normalizedImages, undefined, technique, totalDuration, shotCount, visualStyle, characters, scenes);
 }
 
 async function runGeminiGeneration(
@@ -449,9 +485,11 @@ async function runGeminiGeneration(
   technique?: string,
   totalDuration?: number,
   shotCount?: number,
-  visualStyle?: string
+  visualStyle?: string,
+  characters?: Character[],
+  scenes?: Scene[]
 ): Promise<PromptResult> {
-  const modelName = customModelName || "gemini-3.1-pro-preview";
+  const modelName = customModelName || "gemini-1.5-pro"; // Using 1.5 Pro for complex consistency following
   
   const parts: any[] = [];
   
@@ -478,9 +516,20 @@ async function runGeminiGeneration(
     });
     
     parts.push({
-      text: `分析以上图片中的核心元素，并将其作为“参考素材”融入提示词中。如果用户在创意描述中使用了上述图片标签或关键词，请在生成的提示词中正确引用它们。`,
+      text: `分析以上图片中的核心元素，并将其作为“参考素材”融入提示词中。如果用户在创意描述中使用了上述图片标签 or 关键词，请在生成的提示词中正确引用它们。`,
     });
   }
+
+  const charContext = (characters || []).map(c => `角色设定 [@${c.name}]: ${c.description}`).join("\n");
+  const sceneContext = (scenes || []).map(s => `场景库 [@${s.name}]: ${s.description}`).join("\n");
+
+  parts.push({
+    text: `## 角色与场景库 (CONSISTENCY DATA)
+${charContext || "（无预定义角色）"}
+${sceneContext || "（无预定义场景）"}
+
+`,
+  });
 
     parts.push({
       text: `## 任务指令 (Task)
@@ -499,6 +548,7 @@ async function runGeminiGeneration(
 - **强制分镜数**：如果指定了分镜数量 (${shotCount})，必须严格输出对应数量的分镜。
 - **语言权重**：如果输出语言为 ${language}，则 mainPrompt 必须严格按照此语言生成。
 - **时长匹配**：分镜时长总和必须等于 ${totalDuration || "你建议的时长"}，且分镜标题必须使用区间时长格式（如 2-4s），严禁使用固定时长。
+- **关健：如果用户引用了 @角色名 或 @场景名，请务必从上述库中提取细节注入到每个分镜中。**
 - **分镜内容**：根据视频手法决定运镜，根据参考素材决定视觉元素。
 - **结构规范**：所有的结构化标签内容必须以句号结尾。
 - **输出格式**：返回符合 JSON Schema 的结果。`,
@@ -523,6 +573,8 @@ async function runGeminiGeneration(
                 duration: { type: Type.STRING },
                 motionIntensity: { type: Type.STRING },
                 shotCount: { type: Type.STRING },
+                technique: { type: Type.STRING },
+                visualStyle: { type: Type.STRING },
               },
               required: ["model", "duration", "shotCount"],
             },
@@ -552,6 +604,8 @@ async function runGeminiGeneration(
     try {
       const parsed = JSON.parse(text) as PromptResult;
       parsed.parameters.language = language;
+      if (technique) parsed.parameters.technique = technique;
+      if (visualStyle) parsed.parameters.visualStyle = visualStyle;
       return parsed;
     } catch (parseError) {
       console.error("JSON Parse Error. Raw text:", text);
@@ -571,7 +625,9 @@ async function callOpenAICompatible(
   technique?: string,
   totalDuration?: number,
   shotCount?: number,
-  visualStyle?: string
+  visualStyle?: string,
+  characters?: Character[],
+  scenes?: Scene[]
 ): Promise<PromptResult> {
   try {
     const baseUrl = apiConfig?.baseUrl || (apiConfig?.provider === "openai" ? "https://api.openai.com/v1" : "");
@@ -584,6 +640,9 @@ async function callOpenAICompatible(
       const keywordInfo = img.keyword ? ` (用户引用关键词: @${img.keyword})` : "";
       return `参考图片 ${idx + 1}: 标签为 ${defaultTag}${keywordInfo}。`;
     }).join("\n");
+
+    const charContext = (characters || []).map(c => `角色设定 [@${c.name}]: ${c.description}`).join("\n");
+    const sceneContext = (scenes || []).map(s => `场景库 [@${s.name}]: ${s.description}`).join("\n");
 
     const messages: any[] = [
       { role: "system", content: SYSTEM_INSTRUCTION },
@@ -603,13 +662,18 @@ async function callOpenAICompatible(
 - 分镜数量: ${shotCount || "自动推导（如果没有指定）"}
 - 参考素材: 已提供 ${images?.length || 0} 个素材描述及图片
 
+## 角色与场景库 (CONSISTENCY DATA)
+${charContext || "（无预定义角色）"}
+${sceneContext || "（无预定义场景）"}
+
 ## 规划逻辑
 1. 严禁使用固定模板。
 2. 结合时长 ${totalDuration || ""}、手法 ${technique || ""} 和创意复杂度决定分镜数。
 3. 如果指定了分镜数量 ${shotCount || ""}，则必须严格输出对应数量的分镜。
 4. 确保分镜时长总和一致，且分镜标题必须使用区间时长格式（如 2-4s），严禁使用固定时长。
 5. 强调：如果输出语言是 English，则 mainPrompt 字段必须是英文提示词。
-6. 所有的结构化标签内容必须以句号结尾。
+6. **关健：如果用户引用了 @角色名 或 @场景名，请务必从上述库中提取细节注入到每个分镜中。**
+7. 所有的结构化标签内容必须以句号结尾。
 \n${imageContext}` 
           },
           ...(images || [])
@@ -660,6 +724,8 @@ async function callOpenAICompatible(
     try {
       const parsed = JSON.parse(content) as PromptResult;
       parsed.parameters.language = language;
+      if (technique) parsed.parameters.technique = technique;
+      if (visualStyle) parsed.parameters.visualStyle = visualStyle;
       return parsed;
     } catch (parseError) {
       console.error("OpenAI Parse Error. Raw content:", content);

@@ -142,6 +142,20 @@ export const translations = {
     enableShotCount: "启用数量控制",
     shotCountPlaceholder: "选择分镜数...",
     shotsUnit: "个分镜",
+    cameraMovement: "镜头运镜",
+    selectMovement: "选择一种镜头运镜 (可选)",
+    movements: {
+      zoomIn: "推 (Zoom In)",
+      zoomOut: "拉 (Zoom Out)",
+      panLeft: "摇 - 左 (Pan Left)",
+      panRight: "摇 - 右 (Pan Right)",
+      tiltUp: "摇 - 上 (Tilt Up)",
+      tiltDown: "摇 - 下 (Tilt Down)",
+      trackLeft: "移 - 左 (Track Left)",
+      trackRight: "移 - 右 (Track Right)",
+      pedestalUp: "升 (Pedestal Up)",
+      pedestalDown: "降 (Pedestal Down)"
+    },
     techniques: {
       montage: "蒙太奇",
       longTake: "长镜头",
@@ -153,7 +167,25 @@ export const translations = {
       splitScreen: "分屏",
       matchCut: "匹配剪辑",
       fadeTransition: "淡入淡出"
-    }
+    },
+    characters: "角色库",
+    scenes: "场景库",
+    characterConsistency: "角色一致性",
+    sceneConsistency: "场景一致性",
+    addCharacter: "添加角色",
+    addScene: "添加场景",
+    editCharacter: "编辑角色",
+    editScene: "编辑场景",
+    characterName: "角色名称",
+    sceneName: "场景名称",
+    characterDesc: "详细描述 (长样、服装、性格等)",
+    sceneDesc: "环境描述 (地理位置、光效、风格等)",
+    consistencyTip: "提示：在分镜中使用 @角色名 或 @场景名，系统将自动注入详细描述以维持连贯性。",
+    characterPlaceholder: "如：艾力克斯，一名身穿深蓝色连帽衫的少年，眼神坚定，黑色短发...",
+    scenePlaceholder: "如：雨夜实验室，充满幽蓝色的全息投影，管道密集，光线昏暗阴冷...",
+    noCharacters: "暂无角色定义",
+    noScenes: "暂无场景锁定",
+    assets: "素材资产"
   },
   en: {
     title: "AI Video Prompt Director",
@@ -296,6 +328,20 @@ export const translations = {
     enableShotCount: "Enable Shot Count",
     shotCountPlaceholder: "Select shot count...",
     shotsUnit: "Shots",
+    cameraMovement: "Camera Movement",
+    selectMovement: "Select a camera movement (optional)",
+    movements: {
+      zoomIn: "Zoom In / Push",
+      zoomOut: "Zoom Out / Pull",
+      panLeft: "Pan Left",
+      panRight: "Pan Right",
+      tiltUp: "Tilt Up",
+      tiltDown: "Tilt Down",
+      trackLeft: "Track Left",
+      trackRight: "Track Right",
+      pedestalUp: "Pedestal Up",
+      pedestalDown: "Pedestal Down"
+    },
     techniques: {
       montage: "Montage",
       longTake: "Long Take",
@@ -307,9 +353,40 @@ export const translations = {
       splitScreen: "Split Screen",
       matchCut: "Match Cut",
       fadeTransition: "Fade Transition"
-    }
+    },
+    characters: "Character Library",
+    scenes: "Scene Library",
+    characterConsistency: "Character Consistency",
+    sceneConsistency: "Scene Consistency",
+    addCharacter: "Add Character",
+    addScene: "Add Scene",
+    editCharacter: "Edit Character",
+    editScene: "Edit Scene",
+    characterName: "Character Name",
+    sceneName: "Scene Name",
+    characterDesc: "Description (Appearance, Apparel, Personality)",
+    sceneDesc: "Environment (Location, Lighting, Style)",
+    consistencyTip: "Pro-tip: Use @CharacterName or @SceneName in your script to auto-inject descriptions for consistency.",
+    characterPlaceholder: "e.g., Alex, a teen in a dark blue hoodie, determined gaze, short black hair...",
+    scenePlaceholder: "e.g., Rainy Lab at Night, filled with glowing blue holograms, dense pipes, dim and cold...",
+    noCharacters: "No characters defined",
+    noScenes: "No scenes locked",
+    assets: "Assets"
   }
 };
+
+export const CAMERA_MOVEMENTS = [
+  { id: 'zoomIn', icon: 'Maximize', arrowIcon: 'MoveUpLeft' },
+  { id: 'zoomOut', icon: 'Minimize', arrowIcon: 'MoveDownRight' },
+  { id: 'panLeft', icon: 'ArrowLeft', arrowIcon: 'ArrowLeft' },
+  { id: 'panRight', icon: 'ArrowRight', arrowIcon: 'ArrowRight' },
+  { id: 'tiltUp', icon: 'ArrowUp', arrowIcon: 'ArrowUp' },
+  { id: 'tiltDown', icon: 'ArrowDown', arrowIcon: 'ArrowDown' },
+  { id: 'trackLeft', icon: 'ChevronsLeft', arrowIcon: 'ChevronsLeft' },
+  { id: 'trackRight', icon: 'ChevronsRight', arrowIcon: 'ChevronsRight' },
+  { id: 'pedestalUp', icon: 'MoveUp', arrowIcon: 'MoveUp' },
+  { id: 'pedestalDown', icon: 'MoveDown', arrowIcon: 'MoveDown' }
+];
 
 export interface PromptTemplate {
   id: string;
@@ -383,7 +460,7 @@ export const PROMPT_TEMPLATES: PromptTemplate[] = [
     id: "abstract-fluid",
     category: "abstract",
     title: { zh: "流动的色彩", en: "Fluid Colors" },
-    concept: "[Shot 1] 宏观摄影，深蓝色的墨水滴入清措的水中，缓慢扩散并交织成梦幻的丝绸状纹理。\n[Shot 2] 镜头快速穿梭在不断变化的色彩隧道中，光影交错，产生强烈的视觉冲击力。\n[Shot 3] 金色的粉末在液体中旋转升腾，形成类似星系的螺旋结构，充满艺术张力。"
+    concept: "[Shot 1] 宏观摄影，深兰色的墨水滴入清澈的水中，缓慢扩散并交织成梦幻的丝绸状纹理。\n[Shot 2] 镜头快速穿梭在不断变化的色彩隧道中，光影交错，产生强烈的视觉冲击力。\n[Shot 3] 金色的粉末在液体中旋转升腾，形成类似星系的螺旋结构，充满艺术张力。"
   },
   {
     id: "abstract-geo",
