@@ -1203,6 +1203,34 @@ export default function App() {
     setImages(prev => prev.filter(img => img.id !== id));
   };
 
+  // Auto-resize textarea logic
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      // Temporarily set height to auto to shrink if content was deleted
+      const originalScrollTop = textarea.scrollTop;
+      textarea.style.height = 'auto'; 
+      const scrollHeight = textarea.scrollHeight;
+      const minHeight = 220;
+      const maxHeight = 900;
+      const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
+      
+      textarea.style.height = `${newHeight}px`;
+      
+      // Manage overflow
+      if (scrollHeight > maxHeight) {
+        textarea.style.overflowY = 'auto';
+      } else {
+        textarea.style.overflowY = 'hidden';
+      }
+      
+      // Sync mirror scroll if we are at max height
+      if (mirrorRef.current) {
+        mirrorRef.current.scrollTop = textarea.scrollTop;
+      }
+    }
+  }, [userInput]);
+
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     const selectionStart = e.target.selectionStart;
@@ -2906,7 +2934,7 @@ export default function App() {
                     onScroll={handleScroll}
                     placeholder={t.placeholder}
                     className="mention-textarea relative z-10"
-                    style={{ height: '220px', minHeight: '100px', maxHeight: '900px' }}
+                    style={{ minHeight: '220px', maxHeight: '900px', resize: 'none', transition: 'height 0.2s cubic-bezier(0, 0, 0.2, 1)' }}
                   />
 
                   {/* Camera Movement Trigger Icon - Bottom Left */}
@@ -3634,7 +3662,18 @@ export default function App() {
                         {result?.suggestions.map((s, i) => (
                           <button
                             key={i}
-                            onClick={() => handleGenerate(`${userInput}\n\n[${s.category}] ${s.text}`)}
+                            onClick={() => {
+                              const newText = `\n\n[${s.category}] ${s.text}`;
+                              setUserInput(prev => prev.trim() + newText);
+                              // Scroll to the bottom of the input if needed
+                              if (textareaRef.current) {
+                                setTimeout(() => {
+                                  textareaRef.current?.focus();
+                                  textareaRef.current!.selectionStart = textareaRef.current!.value.length;
+                                  textareaRef.current!.selectionEnd = textareaRef.current!.value.length;
+                                }, 0);
+                              }
+                            }}
                             className="group flex flex-col items-start p-3 rounded-lg border border-brand-border bg-brand-surface hover:border-brand-primary hover:bg-brand-primary/5 transition-all text-left"
                           >
                             <span className="text-xs font-bold uppercase tracking-tighter text-brand-primary mb-1 opacity-70 group-hover:opacity-100">

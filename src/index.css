@@ -70,13 +70,13 @@
   }
 
   .mention-mirror {
-    @apply absolute inset-0 p-3 pointer-events-none whitespace-pre-wrap break-words font-mono text-base font-medium leading-relaxed overflow-y-auto overflow-x-hidden;
+    @apply absolute inset-0 pt-3 px-3 pb-16 pointer-events-none whitespace-pre-wrap break-words font-mono text-base font-medium leading-relaxed overflow-hidden;
     color: var(--text-color) !important;
     opacity: 1 !important;
   }
 
   .mention-textarea {
-    @apply w-full p-3 bg-transparent border-none outline-none resize-y font-mono text-base font-medium leading-relaxed block whitespace-pre-wrap break-words;
+    @apply w-full pt-3 px-3 pb-16 bg-transparent border-none outline-none resize-none font-mono text-base font-medium leading-relaxed block whitespace-pre-wrap break-words;
     color: rgba(0, 0, 0, 0) !important;
     -webkit-text-fill-color: rgba(0, 0, 0, 0) !important;
     text-shadow: none !important;

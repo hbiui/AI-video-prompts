@@ -143,7 +143,7 @@ const SYSTEM_INSTRUCTION = `你是一位顶级的 AI 视频生成提示词工程
 - mainPrompt: 优化后的专业提示词（严格遵守上述分段格式，必须使用用户要求的目标语言输出）。
 - translation: 对应语言的翻译版本（如果用户要求输出语言为“English”，则 mainPrompt 为英文，translation 为中文；反之亦然）。
 - parameters: 包含 model, duration, motionIntensity (仅Kling), shotCount, technique, visualStyle。
-- suggestions: 4-6个分类建议，每个建议包含 category (如 "Cinematic", "Action", "Atmosphere", "Lighting") 和 text (具体的微调指令)。`;
+- suggestions: 4-6个分类建议，每个建议包含 category (分类名) 和 text (具体的微调指令)。**注意：category 和 text 必须严格使用目标输出语言。**例如：如果语言为 'Chinese'，则必须使用中文标签（如 '镜头运镜'、'视觉风格'），严禁使用英文。`;
 
 export interface ImageObject {
   id?: string;
@@ -342,7 +342,7 @@ async function callAnthropic(
 请基于以下输入配置，自动推导最科学的分镜数量与内容：
 - 用户创意/脚本: "${userInput}"
 - 目标模型: ${model}
-- 输出语言 (Target Language): ${language} (注意：mainPrompt 必须对应此语言，translation 则为另一种语言)
+- 输出语言 (Target Language): ${language} (注意：mainPrompt 和 suggestions 必须使用此语言，translation 则为另一种语言)
 - 视频手法: ${technique || "未指定"}
 - 视觉风格: ${visualStyle || "未指定"}
 - 视频总时长: ${totalDuration ? `${totalDuration}秒` : "未指定"}
@@ -546,7 +546,7 @@ ${sceneContext || "（无预定义场景）"}
 ## 规划要求
 - **严禁固定分镜数量**：分析用户脚本的动作节点和总时长。
 - **强制分镜数**：如果指定了分镜数量 (${shotCount})，必须严格输出对应数量的分镜。
-- **语言权重**：如果输出语言为 ${language}，则 mainPrompt 必须严格按照此语言生成。
+- **语言权重 (Language)**：如果输出语言为 ${language}，则 mainPrompt 和 suggestions（包括 category 和 text）必须严格按照此语言生成，严禁输出英文标签。
 - **时长匹配**：分镜时长总和必须等于 ${totalDuration || "你建议的时长"}，且分镜标题必须使用区间时长格式（如 2-4s），严禁使用固定时长。
 - **关健：如果用户引用了 @角色名 或 @场景名，请务必从上述库中提取细节注入到每个分镜中。**
 - **分镜内容**：根据视频手法决定运镜，根据参考素材决定视觉元素。
@@ -671,7 +671,7 @@ ${sceneContext || "（无预定义场景）"}
 2. 结合时长 ${totalDuration || ""}、手法 ${technique || ""} 和创意复杂度决定分镜数。
 3. 如果指定了分镜数量 ${shotCount || ""}，则必须严格输出对应数量的分镜。
 4. 确保分镜时长总和一致，且分镜标题必须使用区间时长格式（如 2-4s），严禁使用固定时长。
-5. 强调：如果输出语言是 English，则 mainPrompt 字段必须是英文提示词。
+5. 强调：如果输出语言是 ${language}，则 mainPrompt 字段和 suggestions 内容（含所有标签）必须全部使用 ${language}。
 6. **关健：如果用户引用了 @角色名 或 @场景名，请务必从上述库中提取细节注入到每个分镜中。**
 7. 所有的结构化标签内容必须以句号结尾。
 \n${imageContext}` 
