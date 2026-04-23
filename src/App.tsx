@@ -410,11 +410,13 @@ export default function App() {
   const [totalDuration, setTotalDuration] = useState<string>("");
   const [isShotCountEnabled, setIsShotCountEnabled] = useState(false);
   const [manualShotCount, setManualShotCount] = useState<string>("3");
+  const [useNaturalLanguage, setUseNaturalLanguage] = useState(false);
   const [showTechniqueDropdown, setShowTechniqueDropdown] = useState(false);
   const [showVisualStyleDropdown, setShowVisualStyleDropdown] = useState(false);
   const [showCameraPopover, setShowCameraPopover] = useState(false);
   const [activeVisualStyleCategory, setActiveVisualStyleCategory] = useState<string | null>(null);
   const [hoveredStyleDesc, setHoveredStyleDesc] = useState<{ zh: string; en: string } | null>(null);
+  const [hoveredTechniqueDesc, setHoveredTechniqueDesc] = useState<{ zh: string; en: string } | null>(null);
   const [images, setImages] = useState<ImageObject[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<PromptResult | null>(null);
@@ -1421,7 +1423,8 @@ export default function App() {
         isShotCountEnabled && manualShotCount ? parseInt(manualShotCount, 10) : undefined,
         selectedVisualStyle || undefined,
         characters,
-        scenes
+        scenes,
+        useNaturalLanguage
       );
       setResult(res);
       
@@ -2614,42 +2617,94 @@ export default function App() {
                       <>
                         <div 
                           className="fixed inset-0 z-[60]" 
-                          onClick={() => setShowTechniqueDropdown(false)}
+                          onClick={() => {
+                            setShowTechniqueDropdown(false);
+                            setHoveredTechniqueDesc(null);
+                          }}
                         />
                         <motion.div
                           initial={{ opacity: 0, y: 10, scale: 0.95 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                          className="absolute top-full left-0 right-0 mt-2 bg-brand-surface border border-brand-border rounded-xl shadow-2xl z-[70] overflow-hidden py-1"
+                          className="absolute top-full left-0 mt-2 bg-brand-surface border border-brand-border rounded-xl shadow-2xl z-[70] flex h-auto max-h-[400px] w-max overflow-hidden"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <button
-                            onClick={() => {
-                              setSelectedTechnique("");
-                              setShowTechniqueDropdown(false);
-                            }}
-                            className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-brand-primary/10 transition-colors text-left"
-                          >
-                            <div className="w-4 h-4 rounded-full border border-brand-border" />
-                            <span className="text-sm font-bold text-dim">{t.clearAll}</span>
-                          </button>
-                          <div className="h-[1px] bg-brand-border mx-2 my-1" />
-                          {techniqueOptions.map((opt) => (
+                          <div className="w-[180px] overflow-y-auto py-2 bg-black/[0.01] custom-scrollbar">
                             <button
-                              key={opt.id}
                               onClick={() => {
-                                setSelectedTechnique(opt.id);
+                                setSelectedTechnique("");
                                 setShowTechniqueDropdown(false);
+                                setHoveredTechniqueDesc(null);
                               }}
-                              className={`w-full px-4 py-2.5 flex items-center gap-3 hover:bg-brand-primary/10 transition-colors text-left ${
-                                selectedTechnique === opt.id ? 'bg-brand-primary/5 text-brand-primary' : 'text-main'
-                              }`}
+                              className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-brand-primary/10 transition-colors text-left"
                             >
-                              <opt.icon className={`w-4 h-4 ${selectedTechnique === opt.id ? 'text-brand-primary' : 'text-muted'}`} />
-                              <span className="text-sm font-bold">
-                                {t.techniques[opt.id as keyof typeof t.techniques]}
-                              </span>
+                              <div className="w-4 h-4 rounded-full border border-brand-border shrink-0" />
+                              <span className="text-sm font-bold text-dim">{t.clearAll}</span>
                             </button>
-                          ))}
+                            <div className="h-[1px] bg-brand-border mx-2 my-1" />
+                            {techniqueOptions.map((opt) => (
+                              <div key={opt.id} className="relative group/item px-1">
+                                <button
+                                  onMouseEnter={() => setHoveredTechniqueDesc({ 
+                                    zh: translations.zh.techniqueDescriptions[opt.id as keyof typeof translations.zh.techniqueDescriptions],
+                                    en: translations.en.techniqueDescriptions[opt.id as keyof typeof translations.en.techniqueDescriptions]
+                                  })}
+                                  onMouseLeave={() => setHoveredTechniqueDesc(null)}
+                                  onClick={() => {
+                                    setSelectedTechnique(opt.id);
+                                    setShowTechniqueDropdown(false);
+                                    setHoveredTechniqueDesc(null);
+                                  }}
+                                  className={`w-full px-3 py-2.5 flex items-center gap-3 rounded-lg transition-all ${
+                                    selectedTechnique === opt.id 
+                                      ? 'bg-brand-primary/10 text-brand-primary shadow-sm ring-1 ring-brand-primary/20' 
+                                      : 'hover:bg-brand-primary/10 text-main'
+                                  }`}
+                                >
+                                  <opt.icon className={`w-4 h-4 shrink-0 ${selectedTechnique === opt.id ? 'text-brand-primary' : 'text-muted'}`} />
+                                  <span className="text-sm font-bold line-clamp-1 text-left">
+                                    {t.techniques[opt.id as keyof typeof t.techniques]}
+                                  </span>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Description Panel */}
+                          <AnimatePresence>
+                            {hoveredTechniqueDesc && (
+                              <motion.div
+                                initial={{ width: 0, opacity: 0 }}
+                                animate={{ width: 260, opacity: 1 }}
+                                exit={{ width: 0, opacity: 0 }}
+                                transition={{ type: "spring", bounce: 0, duration: 0.3 }}
+                                className="bg-brand-bg/40 flex flex-col relative overflow-hidden border-l border-brand-border"
+                              >
+                                <div className="w-[260px] p-6 h-full flex flex-col relative">
+                                  <motion.div
+                                    initial={{ opacity: 0, x: 10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 0.05 }}
+                                    className="flex flex-col gap-4 relative z-10"
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-8 h-8 rounded-lg bg-brand-primary/10 flex items-center justify-center shrink-0">
+                                        <Info className="w-4 h-4 text-brand-primary" />
+                                      </div>
+                                      <h4 className="text-sm font-black text-brand-primary uppercase tracking-[0.2em] line-clamp-1">
+                                        {uiLang === 'zh' ? '手法详情' : 'Technique Details'}
+                                      </h4>
+                                    </div>
+                                    <div className="h-[1px] bg-brand-border/50 w-full" />
+                                    <p className="text-sm leading-relaxed text-main/90 font-medium">
+                                      {hoveredTechniqueDesc[uiLang]}
+                                    </p>
+                                  </motion.div>
+                                  <div className="absolute -right-8 -bottom-8 w-48 h-48 bg-brand-primary/5 rounded-full blur-3xl pointer-events-none" />
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </motion.div>
                       </>
                     )}
@@ -3165,6 +3220,27 @@ export default function App() {
                   {error}
                 </div>
               )}
+
+              {/* Natural Language Formatting Option */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <label className="label-micro">{uiLang === 'zh' ? '自然连贯文本模式' : 'Natural Language Format'}</label>
+                  </div>
+                  <button
+                    onClick={() => setUseNaturalLanguage(!useNaturalLanguage)}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        useNaturalLanguage ? 'bg-brand-primary' : 'bg-brand-border'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          useNaturalLanguage ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
 
               <div
                 className={`btn-primary w-full py-4 flex items-center justify-center gap-2 ${isGenerating ? "cursor-default opacity-100" : "cursor-pointer"}`}

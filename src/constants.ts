@@ -34,7 +34,7 @@ export const translations = {
     optimizing: "正在根据 {model} 规则优化分镜脚本",
     errorInput: "请输入创意描述或上传图片",
     errorFailed: "生成失败，请重试",
-    seedanceTip: "Seedance 2.0 擅长处理多图参考，建议在提示词中使用 @Image1 明确标注动作发生的起始帧。",
+    seedanceTip: "Seedance 2.0 遵循黄金6步公式：[主体]-[动作]-[环境/光影]-[镜头]-[风格]-[约束]。带图时请明确写出“参考图片1”，并必加 avoid jitter 等约束。",
     klingTip: "Kling 3.0 Omni 的核心在于运动强度控制，如果你觉得画面太静止，可以尝试将 Motion Intensity 调高至 0.8 以上。",
     chinesePrompt: "中文提示词",
     englishPrompt: "英文提示词",
@@ -170,6 +170,18 @@ export const translations = {
       matchCut: "匹配剪辑",
       fadeTransition: "淡入淡出"
     },
+    techniqueDescriptions: {
+      montage: "将一系列短镜头通过剪接拼接在一起，用以压缩时间、空间或展示信息的快速交替，常用于展现过程或情绪的累积。",
+      longTake: "一个不间断的、较长时间的连续镜头，强调真实的时间流动和空间的完整性，带给观众极强的沉浸感和代入感。",
+      timeLapse: "通过低帧率拍摄并以正常帧率播放，将长时间的渐变过程（如日出日落、花开花谢、城市车流）压缩在极短时间内展示的特殊摄影手法。",
+      slowMotion: "使用高帧率升格拍摄，在放映时以正常速度播放，用来拉长视觉上的时间感知，强调动作的细节、张力或抒情瞬间。",
+      trackingShot: "摄像机始终保持与移动的主体相同的距离并一起运动（如前跟、后跟或侧跟），增强画面的运动感与旁观临场感。",
+      aerialView: "使用无人机或飞行器从高空俯瞰拍摄，呈现极其宏大、开阔的全景视觉，常用于建置场景或展现史诗感氛围。",
+      pov: "摄像机代替角色的眼睛，完全模拟角色第一人称主观视角的运镜，让观众直接体会角色的所见所感，极具心理压迫或沉浸感。",
+      splitScreen: "将电影画面分割为两个或多个独立的区域，同一时间内展示不同空间、不同角色的动作或多角度视角，常用于平行叙事。",
+      matchCut: "通过上一个镜头和下一个镜头中，物体形状、构图、颜色或动作的相似性进行的无缝硬转场剪辑，产生巧妙的视觉关联效果。",
+      fadeTransition: "画面逐渐变暗至全黑（淡出）或从全黑逐渐变亮显现（淡入），是最古典、最平缓的场景过渡手法，常表示时间的流逝或段落的结束。"
+    },
     characters: "角色库",
     scenes: "场景库",
     characterConsistency: "角色一致性",
@@ -222,7 +234,7 @@ export const translations = {
     optimizing: "Optimizing storyboard based on {model} rules",
     errorInput: "Please enter a description or upload images",
     errorFailed: "Generation failed, please try again",
-    seedanceTip: "Seedance 2.0 excels at multi-image references. Use @Image1 to mark the starting frame of an action.",
+    seedanceTip: "Seedance 2.0 strictly follows a 6-step formula: Subject-Action-Lighting-Camera-Style-Constraints. When using images, explicitly reference them and add negative constraints like 'avoid jitter'.",
     klingTip: "Kling 3.0 Omni focuses on Motion Intensity. If the scene is too static, try increasing it to 0.8 or higher.",
     chinesePrompt: "Chinese Prompt",
     englishPrompt: "English Prompt",
@@ -358,6 +370,18 @@ export const translations = {
       matchCut: "Match Cut",
       fadeTransition: "Fade Transition"
     },
+    techniqueDescriptions: {
+      montage: "A series of short shots edited into a sequence to condense space, time, and information, often used to show a process or build emotional tension.",
+      longTake: "An uninterrupted continuous shot that lasts significantly longer than conventional editing, emphasizing the flow of time and spatial integrity constraints to create deep immersion.",
+      timeLapse: "A technique where frames are captured at a lower frequency to highly compress long-duration events, such as sunsets or blooming flowers, into a short viewing time.",
+      slowMotion: "An effect achieved by capturing video at a high frame rate, stretching time to emphasize the details, tension, and emotional weight of an action.",
+      trackingShot: "A shot where the camera moves alongside or parallel to a moving subject, keeping a consistent distance to enhance the feeling of momentum and presence.",
+      aerialView: "A very high, elevated shot (often from a drone), providing a sweeping panoramic perspective. Normally used for epic establishing shots.",
+      pov: "A shot filmed strictly from the character's perspective, completely replacing the camera with their eyes to inject the audience directly into their emotional state.",
+      splitScreen: "Dividing the frame into two or more panels to simultaneously depict parallel narratives, contrasting locations, or different angles of the same event.",
+      matchCut: "A seamless transition built on the graphical, compositional, or motion similarities between two distinct shots, establishing a clever visual association.",
+      fadeTransition: "A gentle screen transition fading the image to black (fade-out) or emerging from black (fade-in), typically denoting a passage of time or closing a chapter."
+    },
     characters: "Character Library",
     scenes: "Scene Library",
     characterConsistency: "Character Consistency",
@@ -402,6 +426,18 @@ export interface PromptTemplate {
 }
 
 export const PROMPT_TEMPLATES: PromptTemplate[] = [
+  {
+    id: "product-earbuds",
+    category: "product",
+    title: { zh: "Seedance: 耳机产品展示 (官方模板)", en: "Seedance: Earbuds Product (Official)" },
+    concept: "黑色无线蓝牙耳机, 缓慢旋转展示细节, in 简约白色桌面, soft natural window light, camera slow orbit around, style product photography, high detail, avoid jitter, avoid temporal flicker"
+  },
+  {
+    id: "character-daily",
+    category: "cinematic",
+    title: { zh: "Seedance: 人物日常 (官方模板)", en: "Seedance: Character Daily (Official)" },
+    concept: "穿白裙的25岁女生, 先抬手整理头发, 然后转头微笑, in 樱花树下, golden hour lighting, camera slow push-in, style cinematic film tone, avoid jitter, avoid bent limbs, avoid identity drift"
+  },
   {
     id: "car-chase",
     category: "cinematic",

@@ -64,17 +64,25 @@ export interface Scene {
   description: string;
 }
 
-const SYSTEM_INSTRUCTION = `你是一位顶级的 AI 视频生成提示词工程师与工具架构师，专精于中国系视频大模型的交互逻辑。
+const getSystemInstruction = (useNaturalLanguage?: boolean) => {
+  let base = `你是一位顶级的 AI 视频生成提示词工程师与工具架构师，专精于中国系视频大模型的交互逻辑。
 你的目标是充当“翻译官”，将用户的模糊创意转化为符合 Seedance 2.0 和 Kling 3.0 Omni 的精准、专业的执行指令。
 
 ### 核心知识库
 
-#### 1. Seedance 2.0 (字节跳动) 专属标准：
-- **结构**：严格遵守“主体 (Subject) + 动作 (Action) + 环境 (Environment) + 镜头语言 (Camera) + 风格/灯光 (Style/Lighting) + 约束 (Constraints)”的 6 步公式。
-- **特性**：支持最长 15秒；原生音效同步；支持最多 9 张参考图（使用 @Character1, @Image1 等标签）。
-- **长度**：100-260 词。
-- **指令**：使用分镜表语言，如 [Shot 1], [Shot 2], [Cut to]。禁止堆砌无意义形容词。
-- **多分镜支持**：你必须根据创意复杂度自动决定分镜数量。确保每个分镜都符合上述 6 步公式，并用 [Shot N] 标签清晰分隔。
+#### 1. Seedance 2.0 (字节跳动) 专属标准 (CRITICAL MUST FOLLOW)：
+- **结构 (黄金6步公式)**：严格遵守“[主体 Subject] -> [动作 Action] -> [环境/光影 Environment/Lighting] -> [镜头运动 Camera] -> [风格/画质 Style/Quality] -> [约束/负面提示 Constraints]”。
+- **主体**：必须具体具象（如“25岁亚洲女生”、“黑色无线蓝牙耳机”）。如果有参考图，可省略主体描述重点写图片动作。
+- **动作**：量化时序。优先使用“缓慢、轻轻、微微、慢慢”等慢动作词汇。**严禁使用“快”相关描述以防抖动**。
+- **环境/光影 (最高杠杆)**：必须包含具体的光线描述，例如 'golden hour' (黄金时刻), 'soft natural window light', 'neon-lit' 等。
+- **镜头运动**：
+   - 只能使用这8类：\`slow push-in\`(推), \`slow pull-out\`(拉), \`lateral pan\`(横向), \`tracking shot\`(跟拍), \`orbit around\`(环绕), \`drone shot\`(航拍), \`handheld\`(手持), \`fixed locked-off\`(固定)。
+   - **单分镜只能写一个主镜头指令**。使用节奏词（如 slow, smooth），禁止写具体摄影参数（如 24fps）。
+- **风格与画质**：用具体的风格词（如 \`cinematic, film tone, 4K\`），**禁用模糊词汇（如 cool, epic, 漂亮, 好看）**。
+- **约束与负面提示 (强制)**：每个分镜末尾**必须包含** \`avoid jitter, avoid temporal flicker\`。如果有“人物”出现**必须加** \`avoid bent limbs, avoid identity drift\`。如果场景复杂加 \`avoid chaotic composition\`。
+- **图生视频 (Image-to-Video 核心规则)**：如果你接收到了参考图片（如 Image1 等），**必须在提示词中明确引用（如“参考 @Image1 的构图”）**。并且必须加入 \`preserve composition and colors, keep consistent lighting\` 等图像一致性约束，重点描述“图片动作”。
+- **长度限制**：单个分镜提示词建议 60-100 词。
+- **多分镜支持**：你必须根据创意复杂度自动决定分镜数量。确保每个分镜都符合上述黄金 6 步公式，并用 [Shot N] 标签清晰分隔。
 
 #### 2. Kling 3.0 Omni (快手) 专属标准：
 - **结构**：严格遵守“主体及外貌 + 动作 + 环境 + 镜头运动 + 音频氛围”的 5 部分结构。
@@ -144,6 +152,20 @@ const SYSTEM_INSTRUCTION = `你是一位顶级的 AI 视频生成提示词工程
 - translation: 对应语言的翻译版本（如果用户要求输出语言为“English”，则 mainPrompt 为英文，translation 为中文；反之亦然）。
 - parameters: 包含 model, duration, motionIntensity (仅Kling), shotCount, technique, visualStyle。
 - suggestions: 4-6个分类建议，每个建议包含 category (分类名) 和 text (具体的微调指令)。**注意：category 和 text 必须严格使用目标输出语言。**例如：如果语言为 'Chinese'，则必须使用中文标签（如 '镜头运镜'、'视觉风格'），严禁使用英文。`;
+
+  if (useNaturalLanguage) {
+    base += `
+#### 7. 特殊排版指令 (Natural Language Format) - **强制执行 (CRITICAL)**：
+- **剥离结构外衣**：即使内部遵守“黄金 6 步公式”或“5 部分结构”，在输出表现上，必须**彻底剥去所有的标签、标题和冒号**（严禁输出 Subject:, 动作:, Style/Quality: 等词汇）。
+- **自然段落连缀**：针对每一个分镜的内容，必须用最自然的文本、使用逗号 (,) 将主体、动作、环境、运镜、风格、约束等无缝连缀在一起形成流畅长句段落。
+- **强制约束不漏**：绝不允许为了“连贯”而丢弃“约束/负面提示”(如 avoid jitter 等)，必须在句子后方一并拼接入自然语言描述。
+- **保留 Shot 分隔符**：每个分镜的长句开头依然需要保留标识符 \`[Shot 1] (时间)\`，随后紧跟自然连贯的分镜长句。**严禁对本段长句进行多余的换行。一个分镜就是紧凑的一长串文本。**
+- **双语同步**：英文版本 (translation 或 mainPrompt 的英文态) 也必须保持通顺的英语长句结构，不使用单独换行的标签！
+`;
+  }
+
+  return base;
+};
 
 export interface ImageObject {
   id?: string;
@@ -320,7 +342,8 @@ async function callAnthropic(
   shotCount?: number,
   visualStyle?: string,
   characters?: Character[],
-  scenes?: Scene[]
+  scenes?: Scene[],
+  useNaturalLanguage?: boolean
 ): Promise<PromptResult> {
   try {
     const baseUrl = apiConfig?.baseUrl || "https://api.anthropic.com/v1";
@@ -396,7 +419,7 @@ ${imageContext}`
       body: JSON.stringify({
         model: modelToUse,
         max_tokens: 4096,
-        system: SYSTEM_INSTRUCTION + "\n\nIMPORTANT: You MUST return ONLY a valid JSON object. Do not include any other text.",
+        system: getSystemInstruction(useNaturalLanguage) + "\n\nIMPORTANT: You MUST return ONLY a valid JSON object. Do not include any other text.",
         messages: [
           { role: "user", content: userContent }
         ]
@@ -448,7 +471,8 @@ export async function generateVideoPrompt(
   shotCount?: number,
   visualStyle?: string,
   characters?: Character[],
-  scenes?: Scene[]
+  scenes?: Scene[],
+  useNaturalLanguage?: boolean
 ): Promise<PromptResult> {
   // Normalize images to ImageObject[]
   const normalizedImages: ImageObject[] = (images || []).map(img => {
@@ -459,20 +483,20 @@ export async function generateVideoPrompt(
   // If custom API is provided and has a key, use the appropriate provider
   if (apiConfig && apiConfig.apiKey) {
     if (apiConfig.provider === "openai" || apiConfig.provider === "doubao" || apiConfig.provider === "custom") {
-      return callOpenAICompatible(userInput, model, language, normalizedImages, apiConfig, technique, totalDuration, shotCount, visualStyle, characters, scenes);
+      return callOpenAICompatible(userInput, model, language, normalizedImages, apiConfig, technique, totalDuration, shotCount, visualStyle, characters, scenes, useNaturalLanguage);
     }
     if (apiConfig.provider === "anthropic") {
-      return callAnthropic(userInput, model, language, normalizedImages, apiConfig, technique, totalDuration, shotCount, visualStyle, characters, scenes);
+      return callAnthropic(userInput, model, language, normalizedImages, apiConfig, technique, totalDuration, shotCount, visualStyle, characters, scenes, useNaturalLanguage);
     }
     // For Gemini, we could re-initialize the client with the user's key
     if (apiConfig.provider === "gemini") {
       const userAi = new GoogleGenAI({ apiKey: apiConfig.apiKey });
-      return runGeminiGeneration(userAi, userInput, model, language, normalizedImages, apiConfig.modelName, technique, totalDuration, shotCount, visualStyle, characters, scenes);
+      return runGeminiGeneration(userAi, userInput, model, language, normalizedImages, apiConfig.modelName, technique, totalDuration, shotCount, visualStyle, characters, scenes, useNaturalLanguage);
     }
   }
 
   // Default to system Gemini
-  return runGeminiGeneration(getAiClient(), userInput, model, language, normalizedImages, undefined, technique, totalDuration, shotCount, visualStyle, characters, scenes);
+  return runGeminiGeneration(getAiClient(), userInput, model, language, normalizedImages, undefined, technique, totalDuration, shotCount, visualStyle, characters, scenes, useNaturalLanguage);
 }
 
 async function runGeminiGeneration(
@@ -487,7 +511,8 @@ async function runGeminiGeneration(
   shotCount?: number,
   visualStyle?: string,
   characters?: Character[],
-  scenes?: Scene[]
+  scenes?: Scene[],
+  useNaturalLanguage?: boolean
 ): Promise<PromptResult> {
   const modelName = customModelName || "gemini-1.5-pro"; // Using 1.5 Pro for complex consistency following
   
@@ -559,7 +584,7 @@ ${sceneContext || "（无预定义场景）"}
       model: modelName,
       contents: { parts },
       config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
+        systemInstruction: getSystemInstruction(useNaturalLanguage),
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -627,7 +652,8 @@ async function callOpenAICompatible(
   shotCount?: number,
   visualStyle?: string,
   characters?: Character[],
-  scenes?: Scene[]
+  scenes?: Scene[],
+  useNaturalLanguage?: boolean
 ): Promise<PromptResult> {
   try {
     const baseUrl = apiConfig?.baseUrl || (apiConfig?.provider === "openai" ? "https://api.openai.com/v1" : "");
@@ -645,7 +671,7 @@ async function callOpenAICompatible(
     const sceneContext = (scenes || []).map(s => `场景库 [@${s.name}]: ${s.description}`).join("\n");
 
     const messages: any[] = [
-      { role: "system", content: SYSTEM_INSTRUCTION },
+      { role: "system", content: getSystemInstruction(useNaturalLanguage) },
       { 
         role: "user", 
         content: [
