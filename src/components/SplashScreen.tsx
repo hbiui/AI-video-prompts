@@ -124,6 +124,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
                 <img 
                   src={logoImg} 
                   alt="Logo" 
+                  style={{ filter: "var(--logo-filter, hue-rotate(0deg))" }}
                   className="w-20 h-20 mb-6 opacity-80" 
                   onError={(e) => { e.currentTarget.style.display = 'none'; }} 
                 />
@@ -143,12 +144,18 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
               </div>
 
               {/* Terminal Typewriter */}
-              <div className="absolute bottom-16 md:bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-start font-mono text-sm md:text-base tracking-widest text-[#00ff41]/80 min-w-[280px]">
+              <div 
+                className="absolute bottom-16 md:bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-start font-mono text-sm md:text-base tracking-widest min-w-[280px]"
+                style={{ color: "var(--brand-primary, #00FF00)", opacity: 0.8 }}
+              >
                 {typedLines.map((line, i) => (
                   <div key={i} className="mb-2 text-xs md:text-sm shadow-sm">{line}</div>
                 ))}
                 {currentLineIndex < TERMINAL_LINES.length && (
-                  <span className="animate-pulse inline-block w-2.5 h-4 bg-[#00ff41] ml-1 align-middle" />
+                  <span 
+                    className="animate-pulse inline-block w-2.5 h-4 ml-1 align-middle" 
+                    style={{ backgroundColor: "var(--brand-primary, #00ff41)" }}
+                  />
                 )}
               </div>
             </div>

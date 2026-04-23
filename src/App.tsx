@@ -395,6 +395,129 @@ export default function App() {
   const [uiLang, setUiLang] = useState<Language>("zh");
   const t = translations[uiLang];
 
+  const [themeColor, setThemeColor] = useState(() => {
+    return localStorage.getItem('director_theme_color') || '#00FF00';
+  });
+  const [showThemePicker, setShowThemePicker] = useState(false);
+  const themePickerRef = useRef<HTMLDivElement>(null);
+
+  const [isDarkMode, setIsDarkMode] = useState(true);
+
+  // Hex to HSL converter for smart filtering and bounds scaling
+  const hexToHSL = (hex: string) => {
+    let r = 0, g = 0, b = 0;
+    if (hex.length === 4) {
+      r = parseInt(hex[1] + hex[1], 16) / 255;
+      g = parseInt(hex[2] + hex[2], 16) / 255;
+      b = parseInt(hex[3] + hex[3], 16) / 255;
+    } else if (hex.length === 7) {
+      r = parseInt(hex.slice(1, 3), 16) / 255;
+      g = parseInt(hex.slice(3, 5), 16) / 255;
+      b = parseInt(hex.slice(5, 7), 16) / 255;
+    } else {
+      return { h: 120, s: 100, l: 50 }; // Default base Green #00FF00
+    }
+    
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, s = 0, l = (max + min) / 2;
+
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        case b: h = (r - g) / d + 4; break;
+      }
+      h /= 6;
+    }
+    return { 
+      h: Math.round(h * 360), 
+      s: Math.round(s * 100), 
+      l: Math.round(l * 100) 
+    };
+  };
+
+  const hslToHex = (h: number, s: number, l: number) => {
+    l /= 100;
+    const a = s * Math.min(l, 1 - l) / 100;
+    const f = (n: number) => {
+      const k = (n + h / 30) % 12;
+      const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+      return Math.round(255 * color).toString(16).padStart(2, '0');
+    };
+    return `#${f(0)}${f(8)}${f(4)}`.toUpperCase();
+  };
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--brand-primary', themeColor);
+    
+    const hsl = hexToHSL(themeColor);
+    
+    // If saturation is critically low (like pure white #FFFFFF, pure black, greys)
+    // we bypass the hue-rotate and just forcefully grayscale the logo.
+    if (hsl.s <= 10) {
+      root.style.setProperty('--logo-filter', 'grayscale(100%)');
+    } else {
+      const diff = hsl.h - 120; // 120 is the base hue of #00FF00
+      root.style.setProperty('--logo-filter', `hue-rotate(${diff}deg)`);
+    }
+    
+    localStorage.setItem('director_theme_color', themeColor);
+  }, [themeColor]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (themePickerRef.current && !themePickerRef.current.contains(event.target as Node)) {
+        setShowThemePicker(false);
+      }
+    };
+    if (showThemePicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showThemePicker]);
+
+  const THEME_PRESETS = [
+    { name: { zh: "科技绿", en: "Tech Green" }, hex: "#00FF00" },
+    { name: { zh: "原力蓝", en: "Force Blue" }, hex: "#00A3FF" },
+    { name: { zh: "赛博紫", en: "Cyber Purple" }, hex: "#B500FF" },
+    { name: { zh: "日落橘", en: "Sunset Orange" }, hex: "#FF9500" },
+    { name: { zh: "工业黄", en: "Industry Yellow" }, hex: "#FFCC00" },
+    { name: { zh: "极光青", en: "Aurora Cyan" }, hex: "#00FFFF" },
+    { name: { zh: "警示红", en: "Alert Red" }, hex: "#FF3B30" },
+    { name: { zh: "机械灰", en: "Mechanical Gray" }, hex: "#A3A3A3" }
+  ];
+
+  const handleCustomThemeColorChange = (newHex: string) => {
+    // Check if it matches a preset
+    const isPreset = THEME_PRESETS.some(p => p.hex.toUpperCase() === newHex.toUpperCase());
+    if (isPreset) {
+      setThemeColor(newHex);
+      return;
+    }
+
+    // Apply brightness constraints
+    const hsl = hexToHSL(newHex);
+    let clamped = false;
+    
+    if (isDarkMode && hsl.l < 30) {
+      hsl.l = 30;
+      clamped = true;
+    } else if (!isDarkMode && hsl.l < 50) {
+      hsl.l = 50;
+      clamped = true;
+    }
+
+    if (clamped) {
+      const clampedHex = hslToHex(hsl.h, hsl.s, hsl.l);
+      setThemeColor(clampedHex);
+    } else {
+      setThemeColor(newHex);
+    }
+  };
+
   const [userInput, setUserInput] = useState("");
   const [selectedModel, setSelectedModel] = useState<ModelType>("Seedance 2.0");
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageType>("Chinese");
@@ -539,7 +662,6 @@ export default function App() {
   const [mentionMenu, setMentionMenu] = useState<{ show: boolean; x: number; y: number; index: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [generationStage, setGenerationStage] = useState(0);
-  const [isDarkMode, setIsDarkMode] = useState(true);
   const [resultViewTab, setResultViewTab] = useState<"main" | "translation">("main");
   const [logoError, setLogoError] = useState(false);
   const [suggestedContinuations, setSuggestedContinuations] = useState<string[]>([]);
@@ -1839,6 +1961,7 @@ export default function App() {
               <img 
                 src={logoImg} 
                 className="w-11 h-11 rounded-xl shadow-lg border border-brand-border/10 object-cover" 
+                style={{ filter: "var(--logo-filter, hue-rotate(0deg))" }}
                 alt="Logo"
                 onError={() => {
                   console.warn("Local logo failed to load, using fallback icon.");
@@ -1861,6 +1984,76 @@ export default function App() {
             >
               <Languages className="w-5 h-5" />
             </button>
+            <div className="relative" ref={themePickerRef}>
+              <button 
+                onClick={() => setShowThemePicker(!showThemePicker)}
+                className={`p-1.5 rounded-full transition-colors flex justify-center items-center ${
+                  showThemePicker 
+                    ? "bg-brand-primary text-black" 
+                    : "hover:bg-brand-border/50 text-brand-primary"
+                }`}
+                title={uiLang === "zh" ? "自定义主题色" : "Custom Theme Color"}
+              >
+                <Palette className="w-5 h-5" />
+              </button>
+              
+              <AnimatePresence>
+                {showThemePicker && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute top-12 left-1/2 -translate-x-1/2 z-[100] w-[260px] bg-brand-surface border border-brand-border rounded-xl shadow-2xl p-4 flex flex-col gap-4"
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold uppercase tracking-widest text-muted">{uiLang === 'zh' ? '预设主题' : 'Presets'}</span>
+                    </div>
+                    
+                    <div className="grid grid-cols-4 gap-3">
+                      {THEME_PRESETS.map((preset) => (
+                        <button
+                          key={preset.hex}
+                          onClick={() => setThemeColor(preset.hex)}
+                          className="flex flex-col items-center gap-1.5 group"
+                          title={uiLang === 'zh' ? preset.name.zh : preset.name.en}
+                        >
+                          <div 
+                            className={`w-7 h-7 rounded-full shadow-inner border border-white/10 transition-all duration-200 ${
+                              themeColor.toUpperCase() === preset.hex.toUpperCase() 
+                                ? 'scale-110 ring-2 ring-offset-2 ring-offset-brand-surface ring-white/50' 
+                                : 'hover:scale-110 opacity-80 hover:opacity-100 cursor-pointer'
+                            }`}
+                            style={{ backgroundColor: preset.hex }}
+                          />
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="h-px w-full bg-brand-border/60 my-1" />
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold uppercase tracking-widest text-muted">{uiLang === 'zh' ? '自定义颜色' : 'Custom'}</span>
+                      <div className="relative w-8 h-8 rounded-full shadow-inner border border-white/20 transition-all duration-200 cursor-pointer overflow-hidden group hover:scale-110">
+                        <input 
+                          type="color"
+                          value={themeColor}
+                          onChange={(e) => handleCustomThemeColorChange(e.target.value)}
+                          className="absolute -top-2 -left-2 w-12 h-12 opacity-0 cursor-pointer z-10"
+                        />
+                        <div 
+                          className="w-full h-full"
+                          style={{
+                            background: "conic-gradient(from 0deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)"
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
           <p className="text-muted text-base max-w-md">
             {t.subtitle}

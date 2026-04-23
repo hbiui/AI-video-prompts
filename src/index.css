@@ -20,7 +20,8 @@
     --text-dim: rgba(255, 255, 255, 0.4);
     --input-bg: #000000;
     --brand-primary: #00FF00;
-    --brand-text: #00FF00;
+    --brand-text: var(--brand-primary);
+    --logo-hue-rotate: 0deg;
   }
 
   :root.light {
@@ -32,7 +33,7 @@
     --text-dim: #71767B;
     --input-bg: #F1F3F5;
     --brand-primary: #00FF00;
-    --brand-text: #008000;
+    --brand-text: color-mix(in srgb, var(--brand-primary), black 40%);
   }
 
   body {
