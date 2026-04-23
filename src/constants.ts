@@ -154,7 +154,9 @@ export const translations = {
       trackLeft: "移 - 左 (Track Left)",
       trackRight: "移 - 右 (Track Right)",
       pedestalUp: "升 (Pedestal Up)",
-      pedestalDown: "降 (Pedestal Down)"
+      pedestalDown: "降 (Pedestal Down)",
+      orbitCW: "顺时针环绕 (Orbit CW)",
+      orbitCCW: "逆时针环绕 (Orbit CCW)"
     },
     techniques: {
       montage: "蒙太奇",
@@ -340,7 +342,9 @@ export const translations = {
       trackLeft: "Track Left",
       trackRight: "Track Right",
       pedestalUp: "Pedestal Up",
-      pedestalDown: "Pedestal Down"
+      pedestalDown: "Pedestal Down",
+      orbitCW: "Orbit Clockwise",
+      orbitCCW: "Orbit Counter-Clockwise"
     },
     techniques: {
       montage: "Montage",
@@ -385,7 +389,9 @@ export const CAMERA_MOVEMENTS = [
   { id: 'trackLeft', icon: 'ChevronsLeft', arrowIcon: 'ChevronsLeft' },
   { id: 'trackRight', icon: 'ChevronsRight', arrowIcon: 'ChevronsRight' },
   { id: 'pedestalUp', icon: 'MoveUp', arrowIcon: 'MoveUp' },
-  { id: 'pedestalDown', icon: 'MoveDown', arrowIcon: 'MoveDown' }
+  { id: 'pedestalDown', icon: 'MoveDown', arrowIcon: 'MoveDown' },
+  { id: 'orbitCW', icon: 'RotateCw', arrowIcon: 'RotateCw' },
+  { id: 'orbitCCW', icon: 'RotateCcw', arrowIcon: 'RotateCcw' }
 ];
 
 export interface PromptTemplate {

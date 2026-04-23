@@ -124,3 +124,17 @@
 ::-webkit-scrollbar-thumb {
   @apply bg-brand-border rounded-full hover:bg-brand-primary/50;
 }
+
+/* Splash Screen Glow Animations */
+.glow-breathe-text {
+  animation: text-glow-breathe 4s ease-in-out infinite;
+}
+
+@keyframes text-glow-breathe {
+  0%, 100% {
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.2), 0 0 20px var(--brand-primary), 0 0 30px var(--brand-primary);
+  }
+  50% {
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.5), 0 0 30px var(--brand-primary), 0 0 50px var(--brand-primary), 0 0 70px var(--brand-primary);
+  }
+}

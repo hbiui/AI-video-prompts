@@ -28,6 +28,7 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCcw,
+  RotateCw,
   Film,
   Clapperboard,
   Timer,
@@ -101,6 +102,7 @@ import {
   Suggestion
 } from "./services/geminiService";
 import { fetchTrendingShorts } from "./services/youtubeService";
+import { SplashScreen } from "./components/SplashScreen";
 import { translations, Language, PROMPT_TEMPLATES, PromptTemplate, VISUAL_STYLES, CAMERA_MOVEMENTS } from "./constants";
 
 interface TranslationTable {
@@ -386,6 +388,10 @@ const TRENDING_VIDEOS: TrendingVideo[] = [
 ];
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(() => {
+    return !sessionStorage.getItem('director_splash_shown');
+  });
+
   const [uiLang, setUiLang] = useState<Language>("zh");
   const t = translations[uiLang];
 
@@ -1634,7 +1640,14 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col p-4 md:p-8 max-w-7xl mx-auto gap-8">
+    <>
+      {showSplash && (
+        <SplashScreen onComplete={() => {
+          setShowSplash(false);
+          sessionStorage.setItem('director_splash_shown', 'true');
+        }} />
+      )}
+      <div className="min-h-screen flex flex-col p-4 md:p-8 max-w-7xl mx-auto gap-8">
       {/* Mention Menu */}
       <AnimatePresence>
         {mentionMenu && mentionMenu.show && (
@@ -2961,7 +2974,7 @@ export default function App() {
                               initial={{ opacity: 0, scale: 0.95, y: 10 }}
                               animate={{ opacity: 1, scale: 1, y: 0 }}
                               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                              className="absolute bottom-full left-0 mb-3 w-[320px] bg-brand-surface border border-brand-border rounded-xl shadow-2xl z-20 flex flex-col overflow-hidden"
+                              className="absolute bottom-full left-0 mb-3 w-[360px] bg-brand-surface border border-brand-border rounded-xl shadow-2xl z-20 flex flex-col overflow-hidden"
                             >
                               <div className="console-header p-4 border-b border-brand-border bg-brand-bg/40 flex items-center justify-between shrink-0">
                                 <div className="flex items-center gap-2">
@@ -2969,7 +2982,7 @@ export default function App() {
                                   <span className="text-xs uppercase tracking-widest text-[var(--text-muted)] font-mono font-bold">{t.cameraMovement}</span>
                                 </div>
                               </div>
-                              <div className="p-4 grid grid-cols-5 gap-2 bg-brand-surface/50">
+                              <div className="p-4 grid grid-cols-6 gap-2 bg-brand-surface/50">
                                 {CAMERA_MOVEMENTS.map((move) => {
                                   const LocalIcon = move.id === 'zoomIn' ? Maximize : 
                                                   move.id === 'zoomOut' ? Minimize :
@@ -2980,7 +2993,9 @@ export default function App() {
                                                   move.id === 'trackLeft' ? ChevronsLeft :
                                                   move.id === 'trackRight' ? ChevronsRight :
                                                   move.id === 'pedestalUp' ? MoveUp :
-                                                  move.id === 'pedestalDown' ? MoveDown : Video;
+                                                  move.id === 'pedestalDown' ? MoveDown : 
+                                                  move.id === 'orbitCW' ? RotateCw :
+                                                  move.id === 'orbitCCW' ? RotateCcw : Video;
 
                                   return (
                                     <button
@@ -4421,5 +4436,6 @@ export default function App() {
         )}
       </AnimatePresence>
     </div>
+    </>
   );
 }
