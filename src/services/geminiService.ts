@@ -64,7 +64,7 @@ export interface Scene {
   description: string;
 }
 
-const getSystemInstruction = (useNaturalLanguage?: boolean) => {
+const getSystemInstruction = (useNaturalLanguage?: boolean, shotCount?: number) => {
   let base = `你是一位顶级的 AI 视频生成提示词工程师与工具架构师，专精于中国系视频大模型的交互逻辑。
 你的目标是充当“翻译官”，将用户的模糊创意转化为符合 Seedance 2.0 和 Kling 3.0 Omni 的精准、专业的执行指令。
 
@@ -106,7 +106,9 @@ const getSystemInstruction = (useNaturalLanguage?: boolean) => {
 - **分镜时长显示规范 (MANDATORY)**：
     - **显示时长**：当 \`totalDuration\` 为有效数字（用户输入了时长）时，分镜标题必须标注时长区间。**严禁使用固定时长（如 (3s)）**，必须使用动态推导的区间格式，例如 \`[Shot 1] (2-4s)\` 或 \`[第 1 镜] (3-5s)\`。
     - **动态推导**：时长区间应根据分镜内容的复杂度、动作幅度自动推导，不同分镜的区间建议有所差异。
-    - **隐藏时长**：当 \`totalDuration\` 未指定或无输入时，**严禁**在分镜标题或内容中出现任何时长信息（如 2s, 3秒, (2-3s) 等）。标题应仅为 \`[Shot 1]\` 或 \`[第 1 镜]\`。
+    - **隐藏时长或标题**：当 \`totalDuration\` 未指定或无输入时，**严禁**在分镜标题或内容中出现任何时长信息（如 2s, 3秒, (2-3s) 等）。标题应仅为 \`[Shot 1]\` 或 \`[第 1 镜]\`。
+    - **单一分镜特殊处理**：当 \`shotCount\` 精确等于 1 时，生成单镜头，并且完全隐藏所有的分镜标题（严禁输出 \`[Shot 1]\` 及其附带的时间）。直接输出画面描述即可。
+
 - **强制约束**：所有分镜的时长总和必须严格等于 \`totalDuration\`（如果指定了）。如果没有指定，默认按 5-10 秒规划分镜，但不得在输出中显示具体秒数。
 - **参数返回**：在 \`parameters.shotCount\` 中返回你实际生成的数字。
 
@@ -159,7 +161,7 @@ const getSystemInstruction = (useNaturalLanguage?: boolean) => {
 - **剥离结构外衣**：即使内部遵守“黄金 6 步公式”或“5 部分结构”，在输出表现上，必须**彻底剥去所有的标签、标题和冒号**（严禁输出 Subject:, 动作:, Style/Quality: 等词汇）。
 - **自然段落连缀**：针对每一个分镜的内容，必须用最自然的文本、使用逗号 (,) 将主体、动作、环境、运镜、风格、约束等无缝连缀在一起形成流畅长句段落。
 - **强制约束不漏**：绝不允许为了“连贯”而丢弃“约束/负面提示”(如 avoid jitter 等)，必须在句子后方一并拼接入自然语言描述。
-- **保留 Shot 分隔符**：每个分镜的长句开头依然需要保留标识符 \`[Shot 1] (时间)\`，随后紧跟自然连贯的分镜长句。**严禁对本段长句进行多余的换行。一个分镜就是紧凑的一长串文本。**
+- **保留 Shot 分隔符**：除非指定分镜数目为 1 (此时直接输出文本)，否则每个分镜的长句开头依然需要保留标识符 \`[Shot X] (时间)\`，随后紧跟自然连贯的分镜长句。**严禁对本段长句进行多余的换行。一个分镜就是紧凑的一长串文本。**
 - **双语同步**：英文版本 (translation 或 mainPrompt 的英文态) 也必须保持通顺的英语长句结构，不使用单独换行的标签！
 `;
   }
@@ -419,7 +421,7 @@ ${imageContext}`
       body: JSON.stringify({
         model: modelToUse,
         max_tokens: 4096,
-        system: getSystemInstruction(useNaturalLanguage) + "\n\nIMPORTANT: You MUST return ONLY a valid JSON object. Do not include any other text.",
+        system: getSystemInstruction(useNaturalLanguage, shotCount) + "\n\nIMPORTANT: You MUST return ONLY a valid JSON object. Do not include any other text.",
         messages: [
           { role: "user", content: userContent }
         ]
@@ -584,7 +586,7 @@ ${sceneContext || "（无预定义场景）"}
       model: modelName,
       contents: { parts },
       config: {
-        systemInstruction: getSystemInstruction(useNaturalLanguage),
+        systemInstruction: getSystemInstruction(useNaturalLanguage, shotCount),
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
