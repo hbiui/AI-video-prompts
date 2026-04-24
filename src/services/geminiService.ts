@@ -40,6 +40,9 @@ export interface Suggestion {
 export interface PromptResult {
   mainPrompt: string;
   translation: string;
+  audioPrompt?: string; // New field for Audio/SFX
+  variantA?: string;   // For A/B Parallel Generation
+  variantB?: string;   // For A/B Parallel Generation
   parameters: {
     model: string;
     duration: string;
@@ -64,9 +67,15 @@ export interface Scene {
   description: string;
 }
 
-const getSystemInstruction = (useNaturalLanguage?: boolean, shotCount?: number) => {
+const getSystemInstruction = (useNaturalLanguage?: boolean, shotCount?: number, featureFlags?: { audioSFX: boolean; abVariants: boolean; randomizer: boolean }) => {
   let base = `你是一位顶级的 AI 视频生成提示词工程师与工具架构师，专精于中国系视频大模型的交互逻辑。
 你的目标是充当“翻译官”，将用户的模糊创意转化为符合 Seedance 2.0 和 Kling 3.0 Omni 的精准、专业的执行指令。
+
+### 当前激活的功能状态 (ACTIVE FEATURES)
+- **音频/SFX 提示词辅助**: ${featureFlags?.audioSFX ? '【已开启】' : '【未开启】'}
+- **A/B 变体平行生成**: ${featureFlags?.abVariants ? '【已开启】' : '【未开启】'}
+- **随机抽卡辅助**: ${featureFlags?.randomizer ? '【已开启】' : '【未开启】'}
+- **自然语言模式**: ${useNaturalLanguage ? '【已开启】' : '【未开启】'}
 
 ### 核心知识库
 
@@ -134,7 +143,12 @@ const getSystemInstruction = (useNaturalLanguage?: boolean, shotCount?: number) 
 - **标点一致性**：每一个结构标签的内容**必须以句号 (Full-stop/Period) 结尾**（中文输出使用 \`。\`, 英文输出使用 \`.\`）。
 - **语言一致性**：\`mainPrompt\` 和 \`translation\` 的结构必须完全一致。英文版使用对应的英文标签（如 Subject, Action 等）。时长显示逻辑（显示或隐藏）必须在双语中同步执行。
 
-#### 5. 通用最优解：
+#### 5. 高级功能 (Advanced Features) - **必须根据开关状态激活**：
+- **音频/SFX 提示词辅助 (Audio/SFX Assistance)**：如果检测到此功能已激活，你必须在 \`audioPrompt\` 字段中生成一段专门描述该视频音效、背景音乐或配音风格的提示词。内容应与分镜画面高度契合。
+- **A/B 变体平行生成 (A/B Parallel Generation)**：如果检测到此功能已激活，你依然需要在 \`mainPrompt\` 中给出平衡的、正式的建议。同时，在 \`variantA\` (保守/稳重) 和 \`variantB\` (激进/极具创意) 字段中提供两个截然不同风格的完整提示词方案。方案中应包含所有分镜。
+- **关键词/词缀高亮修改 (Highlight Tags)**：当此功能开启时，系统会在前端自动处理高亮。你无需在 JSON 中做标记，但请确保在提示词中使用更规范、更具“词缀感”的结构，以便前端识别（例如用逗号清晰分隔：low-angle shot, cinematic lighting, grain...）。
+
+#### 6. 通用最优解：
 - 避免使用“漂亮”、“好看”等模糊词。
 - 景别（特写、中景、全景）和运镜方式（推、拉、摇、移）为必填项。
 - **结构严谨性**：每一行描述内容后必须添加标点符号（。/.），确保分镜描述的条理性。
@@ -345,9 +359,17 @@ async function callAnthropic(
   visualStyle?: string,
   characters?: Character[],
   scenes?: Scene[],
-  useNaturalLanguage?: boolean
+  useNaturalLanguage?: boolean,
+  featureFlags?: any
 ): Promise<PromptResult> {
   try {
+    const requiredFields = ["mainPrompt", "translation", "parameters", "suggestions"];
+    if (featureFlags?.audioSFX) requiredFields.push("audioPrompt");
+    if (featureFlags?.abVariants) {
+      requiredFields.push("variantA");
+      requiredFields.push("variantB");
+    }
+
     const baseUrl = apiConfig?.baseUrl || "https://api.anthropic.com/v1";
     const endpoint = `${baseUrl}/messages`;
     
@@ -386,6 +408,8 @@ ${sceneContext || "（无预定义场景）"}
 - **必须遵守语言设定：如果输出语言为 English，则 mainPrompt 必须是全英文提示词。
 - **关健：如果用户引用了 @角色名 或 @场景名，请务必从上述库中提取细节注入到每个分镜的描述中。**
 - **所有的结构化标签内容必须以句号结尾。
+- **强制要求：你必须返回包含以下字段的 JSON 对象：${requiredFields.join(", ")}。
+- **A/B 变体要求：如果 A/B 变体平行生成已开启，variantA 和 variantB 必须包含完整的、风格迥异的分镜描述。
 
 ${imageContext}` 
       }
@@ -421,7 +445,7 @@ ${imageContext}`
       body: JSON.stringify({
         model: modelToUse,
         max_tokens: 4096,
-        system: getSystemInstruction(useNaturalLanguage, shotCount) + "\n\nIMPORTANT: You MUST return ONLY a valid JSON object. Do not include any other text.",
+        system: getSystemInstruction(useNaturalLanguage, shotCount, featureFlags) + "\n\nIMPORTANT: You MUST return ONLY a valid JSON object. Do not include any other text.",
         messages: [
           { role: "user", content: userContent }
         ]
@@ -474,7 +498,8 @@ export async function generateVideoPrompt(
   visualStyle?: string,
   characters?: Character[],
   scenes?: Scene[],
-  useNaturalLanguage?: boolean
+  useNaturalLanguage?: boolean,
+  featureFlags?: any
 ): Promise<PromptResult> {
   // Normalize images to ImageObject[]
   const normalizedImages: ImageObject[] = (images || []).map(img => {
@@ -485,20 +510,20 @@ export async function generateVideoPrompt(
   // If custom API is provided and has a key, use the appropriate provider
   if (apiConfig && apiConfig.apiKey) {
     if (apiConfig.provider === "openai" || apiConfig.provider === "doubao" || apiConfig.provider === "custom") {
-      return callOpenAICompatible(userInput, model, language, normalizedImages, apiConfig, technique, totalDuration, shotCount, visualStyle, characters, scenes, useNaturalLanguage);
+      return callOpenAICompatible(userInput, model, language, normalizedImages, apiConfig, technique, totalDuration, shotCount, visualStyle, characters, scenes, useNaturalLanguage, featureFlags);
     }
     if (apiConfig.provider === "anthropic") {
-      return callAnthropic(userInput, model, language, normalizedImages, apiConfig, technique, totalDuration, shotCount, visualStyle, characters, scenes, useNaturalLanguage);
+      return callAnthropic(userInput, model, language, normalizedImages, apiConfig, technique, totalDuration, shotCount, visualStyle, characters, scenes, useNaturalLanguage, featureFlags);
     }
     // For Gemini, we could re-initialize the client with the user's key
     if (apiConfig.provider === "gemini") {
       const userAi = new GoogleGenAI({ apiKey: apiConfig.apiKey });
-      return runGeminiGeneration(userAi, userInput, model, language, normalizedImages, apiConfig.modelName, technique, totalDuration, shotCount, visualStyle, characters, scenes, useNaturalLanguage);
+      return runGeminiGeneration(userAi, userInput, model, language, normalizedImages, apiConfig.modelName, technique, totalDuration, shotCount, visualStyle, characters, scenes, useNaturalLanguage, featureFlags);
     }
   }
 
   // Default to system Gemini
-  return runGeminiGeneration(getAiClient(), userInput, model, language, normalizedImages, undefined, technique, totalDuration, shotCount, visualStyle, characters, scenes, useNaturalLanguage);
+  return runGeminiGeneration(getAiClient(), userInput, model, language, normalizedImages, undefined, technique, totalDuration, shotCount, visualStyle, characters, scenes, useNaturalLanguage, featureFlags);
 }
 
 async function runGeminiGeneration(
@@ -514,7 +539,8 @@ async function runGeminiGeneration(
   visualStyle?: string,
   characters?: Character[],
   scenes?: Scene[],
-  useNaturalLanguage?: boolean
+  useNaturalLanguage?: boolean,
+  featureFlags?: any
 ): Promise<PromptResult> {
   const modelName = customModelName || "gemini-1.5-pro"; // Using 1.5 Pro for complex consistency following
   
@@ -582,17 +608,27 @@ ${sceneContext || "（无预定义场景）"}
     });
 
   try {
+    const requiredFields = ["mainPrompt", "translation", "parameters", "suggestions"];
+    if (featureFlags?.audioSFX) requiredFields.push("audioPrompt");
+    if (featureFlags?.abVariants) {
+      requiredFields.push("variantA");
+      requiredFields.push("variantB");
+    }
+
     const response = await client.models.generateContent({
       model: modelName,
       contents: { parts },
       config: {
-        systemInstruction: getSystemInstruction(useNaturalLanguage, shotCount),
+        systemInstruction: getSystemInstruction(useNaturalLanguage, shotCount, featureFlags),
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
             mainPrompt: { type: Type.STRING },
             translation: { type: Type.STRING },
+            audioPrompt: { type: Type.STRING },
+            variantA: { type: Type.STRING },
+            variantB: { type: Type.STRING },
             parameters: {
               type: Type.OBJECT,
               properties: {
@@ -617,7 +653,7 @@ ${sceneContext || "（无预定义场景）"}
               },
             },
           },
-          required: ["mainPrompt", "translation", "parameters", "suggestions"],
+          required: requiredFields,
         },
       },
     });
@@ -655,7 +691,8 @@ async function callOpenAICompatible(
   visualStyle?: string,
   characters?: Character[],
   scenes?: Scene[],
-  useNaturalLanguage?: boolean
+  useNaturalLanguage?: boolean,
+  featureFlags?: any
 ): Promise<PromptResult> {
   try {
     const baseUrl = apiConfig?.baseUrl || (apiConfig?.provider === "openai" ? "https://api.openai.com/v1" : "");
@@ -672,8 +709,15 @@ async function callOpenAICompatible(
     const charContext = (characters || []).map(c => `角色设定 [@${c.name}]: ${c.description}`).join("\n");
     const sceneContext = (scenes || []).map(s => `场景库 [@${s.name}]: ${s.description}`).join("\n");
 
+    const requiredFields = ["mainPrompt", "translation", "parameters", "suggestions"];
+    if (featureFlags?.audioSFX) requiredFields.push("audioPrompt");
+    if (featureFlags?.abVariants) {
+      requiredFields.push("variantA");
+      requiredFields.push("variantB");
+    }
+
     const messages: any[] = [
-      { role: "system", content: getSystemInstruction(useNaturalLanguage) },
+      { role: "system", content: getSystemInstruction(useNaturalLanguage, shotCount, featureFlags) },
       { 
         role: "user", 
         content: [
@@ -689,6 +733,8 @@ async function callOpenAICompatible(
 - 视频总时长: ${totalDuration ? `${totalDuration}秒` : "未指定"}
 - 分镜数量: ${shotCount || "自动推导（如果没有指定）"}
 - 参考素材: 已提供 ${images?.length || 0} 个素材描述及图片
+- 强制要求：你必须返回包含以下字段的 JSON 对象：${requiredFields.join(", ")}。
+- A/B 变体要求：如果 A/B 变体平行生成已开启，variantA 和 variantB 必须包含完整的、风格迥异的分镜描述。
 
 ## 角色与场景库 (CONSISTENCY DATA)
 ${charContext || "（无预定义角色）"}
@@ -727,7 +773,8 @@ ${sceneContext || "（无预定义场景）"}
         model: modelToUse,
         messages,
         max_tokens: 4096,
-        response_format: { type: "json_object" }
+        response_format: { type: "json_object" },
+        system: getSystemInstruction(useNaturalLanguage, shotCount, featureFlags)
       })
     });
 

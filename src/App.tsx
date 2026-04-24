@@ -59,6 +59,8 @@ import {
   Circle,
   Maximize,
   Minimize,
+  Highlighter,
+  Dices,
   ArrowLeft,
   ArrowRight,
   ArrowUp,
@@ -553,7 +555,21 @@ export default function App() {
   const [showHistory, setShowHistory] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [settingsActiveTab, setSettingsActiveTab] = useState<"api" | "compression" | "youtube">("api");
+  const [settingsActiveTab, setSettingsActiveTab] = useState<"api" | "compression" | "youtube" | "features">("api");
+  
+  // Feature Toggles state
+  const [featureFlags, setFeatureFlags] = useState(() => {
+    const saved = localStorage.getItem('director_feature_flags');
+    return saved ? JSON.parse(saved) : {
+      audioSFX: false,
+      abVariants: false,
+      randomizer: false
+    };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('director_feature_flags', JSON.stringify(featureFlags));
+  }, [featureFlags]);
   const [apiConfig, setApiConfig] = useState<ApiConfig>({ provider: "gemini", apiKey: "" });
   const [youtubeApiKey, setYoutubeApiKey] = useState("");
   const [providerConfigs, setProviderConfigs] = useState<Record<string, Partial<ApiConfig>>>({
@@ -663,6 +679,9 @@ export default function App() {
   const [isDragging, setIsDragging] = useState(false);
   const [generationStage, setGenerationStage] = useState(0);
   const [resultViewTab, setResultViewTab] = useState<"main" | "translation">("main");
+  const [selectedVariant, setSelectedVariant] = useState<'main' | 'A' | 'B'>('main');
+  const [isEditingTag, setIsEditingTag] = useState<{ index: number, text: string } | null>(null);
+  const [isHighlightMode, setIsHighlightMode] = useState(false);
   const [logoError, setLogoError] = useState(false);
   const [suggestedContinuations, setSuggestedContinuations] = useState<string[]>([]);
   const [isSuggesting, setIsSuggesting] = useState(false);
@@ -1529,6 +1548,7 @@ export default function App() {
 
     setIsGenerating(true);
     setResultViewTab('main');
+    setIsHighlightMode(false);
     setError(null);
     if (rightPanelRef.current) {
       rightPanelRef.current.scrollTo({ top: 0, behavior: "smooth" });
@@ -1546,9 +1566,11 @@ export default function App() {
         selectedVisualStyle || undefined,
         characters,
         scenes,
-        useNaturalLanguage
+        useNaturalLanguage,
+        featureFlags
       );
       setResult(res);
+      setSelectedVariant('main'); // Reset to official version on new generate
       
       // Save to history
       const newItem: HistoryItem = {
@@ -1637,10 +1659,30 @@ export default function App() {
   const handleDownload = () => {
     if (!result) return;
     const model = result.parameters.model;
-    const content = `[${model} AI Video Prompt]\n\n` + 
-                    `### Main Prompt (${result.parameters.language}):\n${result.mainPrompt}\n\n` +
-                    `### Translation / Reference:\n${result.translation}\n\n` +
-                    `### Video Parameters:\n` +
+    
+    let mainContent = "";
+    if (selectedVariant === 'A') mainContent = result.variantA || "";
+    else if (selectedVariant === 'B') mainContent = result.variantB || "";
+    else {
+      mainContent = resultViewTab === 'main' 
+        ? (result.parameters.language === selectedLanguage ? result.mainPrompt : result.translation)
+        : (result.parameters.language === selectedLanguage ? result.translation : result.mainPrompt);
+    }
+
+    let content = `[${model} AI Video Prompt]\n\n` + 
+                    `### Generated Prompt:\n${mainContent}\n\n`;
+    
+    if (result.variantA || result.variantB) {
+      content += `--- VARIANTS ---\n`;
+      if (result.variantA) content += `### Variant A:\n${result.variantA}\n\n`;
+      if (result.variantB) content += `### Variant B:\n${result.variantB}\n\n`;
+    }
+
+    if (result.audioPrompt) {
+      content += `### Audio/SFX Prompt:\n${result.audioPrompt}\n\n`;
+    }
+
+    content += `### Video Parameters:\n` +
                     `- Model: ${result.parameters.model}\n` +
                     `- Duration: ${result.parameters.duration}\n` +
                     `${result.parameters.motionIntensity ? `- Motion Intensity: ${result.parameters.motionIntensity}\n` : ''}` +
@@ -1721,6 +1763,52 @@ export default function App() {
     setReverseSuccess(false);
   };
 
+  const handleRandomizeConfig = () => {
+    // Random Model
+    const models: ModelType[] = ["Seedance 2.0", "Kling 3.0 Omni"];
+    setSelectedModel(models[Math.floor(Math.random() * models.length)]);
+    
+    // Random Language
+    const langs: LanguageType[] = ["Chinese", "English"];
+    setSelectedLanguage(langs[Math.floor(Math.random() * langs.length)]);
+
+    // Random Technique (from techniqueOptions)
+    if (techniqueOptions.length > 0) {
+      const randomTech = techniqueOptions[Math.floor(Math.random() * techniqueOptions.length)];
+      setSelectedTechnique(randomTech.id);
+    }
+
+    // Random Visual Style (from constants)
+    const styleCategories = Object.keys(VISUAL_STYLES);
+    const randomCategoryKey = styleCategories[Math.floor(Math.random() * styleCategories.length)] as keyof typeof VISUAL_STYLES;
+    const categoryData = VISUAL_STYLES[randomCategoryKey];
+    if (categoryData && categoryData.styles.length > 0) {
+      const randomStyle = categoryData.styles[Math.floor(Math.random() * categoryData.styles.length)];
+      setSelectedVisualStyle(randomStyle.name.zh);
+    }
+
+    // Random Shot Count & Duration (Optional)
+    if (Math.random() > 0.5) {
+      setIsShotCountEnabled(true);
+      setManualShotCount((Math.floor(Math.random() * 5) + 2).toString());
+    } else {
+      setIsShotCountEnabled(false);
+    }
+
+    if (Math.random() > 0.5) {
+      setIsDurationEnabled(true);
+      setTotalDuration((Math.floor(Math.random() * 10) + 3).toString());
+    } else {
+      setIsDurationEnabled(false);
+    }
+
+    // Pick a random template concept
+    if (PROMPT_TEMPLATES.length > 0) {
+      const randomTpl = PROMPT_TEMPLATES[Math.floor(Math.random() * PROMPT_TEMPLATES.length)];
+      setUserInput(randomTpl.concept);
+    }
+  };
+
   const loadFromHistory = (item: HistoryItem) => {
     setUserInput(item.userInput);
     setSelectedModel(item.model);
@@ -1772,7 +1860,7 @@ export default function App() {
           sessionStorage.setItem('director_splash_shown', 'true');
         }} />
       )}
-      <div className="min-h-screen flex flex-col p-4 md:p-8 max-w-7xl mx-auto gap-8">
+      <div className="min-h-screen flex flex-col p-4 md:p-8 max-w-[1600px] mx-auto gap-8">
       {/* Mention Menu */}
       <AnimatePresence>
         {mentionMenu && mentionMenu.show && (
@@ -2096,70 +2184,81 @@ export default function App() {
         </div>
       </header>
 
-      <main className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 relative">
-        {/* Settings Drawer Overlay */}
+      <main className="grid grid-cols-1 lg:grid-cols-[450px_1fr] gap-8 flex-1 relative">
+        {/* Settings Modal */}
         <AnimatePresence>
           {showSettings && (
-            <>
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setShowSettings(false)}
-                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm shadow-2xl"
               />
               <motion.div 
-                initial={{ x: "100%" }}
-                animate={{ x: 0 }}
-                exit={{ x: "100%" }}
-                transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="fixed top-0 right-0 h-full w-full max-w-md bg-brand-surface border-l border-brand-border z-50 flex flex-col shadow-2xl"
+                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className="relative w-full max-w-4xl h-[750px] bg-brand-surface border border-brand-border flex overflow-hidden rounded-2xl shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)]"
               >
-                <div className="console-header p-4 border-b border-brand-border flex items-center justify-between bg-[var(--input-bg)]/50">
-                  <div className="flex items-center gap-2">
-                    <SettingsIcon className="w-4 h-4 text-brand-primary" />
-                    <span className="label-micro">{t.apiConfig}</span>
+                {/* Vertical Sidebar */}
+                <div className="w-56 border-r border-brand-border bg-brand-bg/30 flex flex-col">
+                  <div className="p-6 border-b border-brand-border flex items-center gap-3">
+                    <SettingsIcon className="w-5 h-5 text-brand-primary" />
+                    <span className="text-sm font-black uppercase tracking-[0.2em]">{t.settings}</span>
                   </div>
-                  <button onClick={() => setShowSettings(false)} className="text-muted hover:text-main">
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                {/* Tab Bar */}
-                <div className="flex border-b border-brand-border bg-brand-bg/20 p-1 gap-1">
-                  {[
-                    { id: "api", label: t.apiConfig, icon: Cpu },
-                    { id: "compression", label: t.imageCompression, icon: Zap },
-                    { id: "youtube", label: t.youtubeApiConfig, icon: Youtube }
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setSettingsActiveTab(tab.id as any)}
-                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                        settingsActiveTab === tab.id 
-                          ? "bg-brand-surface border border-brand-border text-brand-primary shadow-sm" 
-                          : "text-muted hover:text-main hover:bg-brand-surface/50"
-                      }`}
-                    >
-                      <tab.icon className={`w-3.5 h-3.5 ${settingsActiveTab === tab.id ? "text-brand-primary" : "text-muted/50"}`} />
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex-1 overflow-y-auto custom-scrollbar">
-                  <AnimatePresence mode="wait">
-                    {/* Section 1: AI Engine Configuration */}
-                    {settingsActiveTab === "api" && (
-                      <motion.section 
-                        key="api"
-                        initial={{ opacity: 0, x: 10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -10 }}
-                        className="p-6 space-y-6"
+                  
+                  <div className="flex-1 p-3 space-y-1.5 overflow-y-auto">
+                    {[
+                      { id: "api", label: t.apiConfig, icon: Cpu },
+                      { id: "features", label: t.features, icon: Sparkles },
+                      { id: "compression", label: t.imageCompression, icon: Zap },
+                      { id: "youtube", label: t.youtubeApiConfig, icon: Youtube }
+                    ].map((tab) => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setSettingsActiveTab(tab.id as any)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${
+                          settingsActiveTab === tab.id 
+                            ? "bg-brand-primary/10 text-brand-primary border border-brand-primary/20 shadow-sm" 
+                            : "text-muted hover:text-main hover:bg-brand-surface border border-transparent"
+                        }`}
                       >
-                        <div className="flex items-center gap-2 pb-2 border-b border-brand-border/50">
-                          <Cpu className="w-4 h-4 text-brand-primary" />
+                        <tab.icon className={`w-4 h-4 ${settingsActiveTab === tab.id ? "text-brand-primary" : "text-muted/50"}`} />
+                        <span className="truncate">{tab.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Content Area */}
+                <div className="flex-1 flex flex-col bg-[var(--input-bg)]/30 overflow-hidden">
+                  <div className="flex items-center justify-between p-6 border-b border-brand-border">
+                    <h3 className="text-sm font-black uppercase tracking-[0.2em] text-dim">
+                      {settingsActiveTab === 'api' ? t.apiConfig : 
+                       settingsActiveTab === 'features' ? t.features : 
+                       settingsActiveTab === 'compression' ? t.imageCompression : t.youtubeApiConfig}
+                    </h3>
+                    <button onClick={() => setShowSettings(false)} className="p-2 rounded-lg hover:bg-brand-surface text-muted transition-colors">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto custom-scrollbar">
+                    <AnimatePresence mode="wait">
+                      {/* Section 1: AI Engine Configuration */}
+                      {settingsActiveTab === "api" && (
+                        <motion.section 
+                          key="api"
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -20 }}
+                          className="p-8 space-y-8"
+                        >
+                          <div className="flex items-center gap-2 pb-2 border-b border-brand-border/50">
+                            <Cpu className="w-4 h-4 text-brand-primary" />
                           <h3 className="text-sm font-black uppercase tracking-[0.2em] text-main">{t.apiConfig}</h3>
                         </div>
 
@@ -2403,7 +2502,57 @@ export default function App() {
                       </motion.section>
                     )}
 
-                    {/* Section 3: Platform Integration */}
+                    {/* Section 4: Features & Toggles */}
+                    {settingsActiveTab === "features" && (
+                      <motion.section 
+                        key="features"
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        className="p-6 space-y-6"
+                      >
+                        <div className="flex items-center gap-2 pb-2 border-b border-brand-border/50">
+                          <Sparkles className="w-4 h-4 text-brand-primary" />
+                          <h3 className="text-sm font-black uppercase tracking-[0.2em] text-main">{t.features}</h3>
+                        </div>
+
+                        <div className="space-y-4 px-1 pb-10">
+                          {[
+                            { id: 'audioSFX', label: t.enableAudioSFX, tip: t.enableAudioSFXTip, icon: Wind },
+                            { id: 'abVariants', label: t.enableABVariants, tip: t.enableABVariantsTip, icon: Layers },
+                            { id: 'randomizer', label: t.enableRandomizer, tip: t.enableRandomizerTip, icon: Dices }
+                          ].map(feature => (
+                            <div key={feature.id} className="p-4 rounded-xl border border-brand-border bg-brand-bg/30 hover:border-brand-primary/30 transition-all group">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="p-2 rounded-lg bg-brand-primary/10 text-brand-primary group-hover:scale-110 transition-transform">
+                                    <feature.icon className="w-5 h-5" />
+                                  </div>
+                                  <div>
+                                    <h4 className="text-sm font-bold text-main">{feature.label}</h4>
+                                    <p className="text-[10px] text-muted leading-relaxed mt-0.5">{feature.tip}</p>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => setFeatureFlags((prev: any) => ({ ...prev, [feature.id]: !prev[feature.id] }))}
+                                  className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                    featureFlags[feature.id as keyof typeof featureFlags] ? 'bg-brand-primary' : 'bg-brand-border'
+                                  }`}
+                                >
+                                  <span
+                                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                      featureFlags[feature.id as keyof typeof featureFlags] ? 'translate-x-5' : 'translate-x-0'
+                                    }`}
+                                  />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </motion.section>
+                    )}
+
+                    {/* Section 5: Platform Integration */}
                     {settingsActiveTab === "youtube" && (
                       <motion.section 
                         key="youtube"
@@ -2456,7 +2605,7 @@ export default function App() {
                           </div>
                         </div>
                       </motion.section>
-                    )}
+                      )}
                   </AnimatePresence>
                 </div>
 
@@ -2474,10 +2623,11 @@ export default function App() {
                     {t.saveSettings}
                   </button>
                 </div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
         {/* Templates Drawer Overlay */}
         <AnimatePresence>
@@ -2684,7 +2834,7 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        <div className="lg:col-span-5 flex flex-col gap-4 relative z-20">
+        <div className="flex flex-col gap-4 relative z-20">
           {/* Tab Switcher */}
           <div className="flex bg-brand-surface border border-brand-border rounded p-1 self-start">
             <button
@@ -2727,13 +2877,25 @@ export default function App() {
                 <Cpu className="w-4 h-4 text-brand-primary" />
                 <span className="label-micro">{t.inputConfig}</span>
               </div>
-              <button 
-                onClick={handleClearAll}
-                className="flex items-center gap-1 text-sm font-bold text-muted hover:text-red-500 transition-colors"
-              >
-                <RefreshCw className="w-3 h-3" />
-                {t.clearAll}
-              </button>
+              <div className="flex items-center gap-4">
+                {featureFlags.randomizer && (
+                  <button 
+                    onClick={handleRandomizeConfig}
+                    className="flex items-center gap-1.5 text-xs font-black text-brand-primary hover:text-brand-text transition-all bg-brand-primary/10 px-2 py-1 rounded border border-brand-primary/20 hover:border-brand-primary"
+                    title={t.magicDice}
+                  >
+                    <Dices className="w-3.5 h-3.5" />
+                    <span>{t.randomize}</span>
+                  </button>
+                )}
+                <button 
+                  onClick={handleClearAll}
+                  className="flex items-center gap-1 text-sm font-bold text-muted hover:text-red-500 transition-colors"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  {t.clearAll}
+                </button>
+              </div>
             </div>
             
             <div className="p-6 flex flex-col gap-6">
@@ -3738,63 +3900,110 @@ export default function App() {
       </div>
 
         {/* Right Column: Output Panel */}
-        <div ref={rightPanelRef} className="lg:col-span-7 flex flex-col gap-6">
+        <div ref={rightPanelRef} className="flex flex-col gap-6">
           <section className="console-panel flex-1 flex flex-col relative">
             <div className="console-header">
               <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-brand-primary" />
-                  <span className="label-micro">{t.optimizedPrompt}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Sparkles className="w-4 h-4 text-brand-primary shrink-0" />
+                  <span className="label-micro whitespace-nowrap">{t.optimizedPrompt}</span>
                 </div>
                 {result && (
-                  <div className="flex bg-brand-surface/50 rounded p-0.5 border border-brand-border">
-                    <button 
-                      onClick={() => setResultViewTab('main')}
-                      className={`px-3 py-1 rounded text-xs font-bold transition-all ${
-                        resultViewTab === 'main' 
-                          ? "bg-brand-primary text-black" 
-                          : "text-muted hover:text-dim"
-                      }`}
-                    >
-                      {t.scriptPreview}
-                    </button>
-                    <button 
-                      onClick={() => setResultViewTab('translation')}
-                      className={`px-3 py-1 rounded text-xs font-bold transition-all ${
-                        resultViewTab === 'translation' 
-                          ? "bg-brand-primary text-black" 
-                          : "text-muted hover:text-dim"
-                      }`}
-                    >
-                      {t.translationRef}
-                    </button>
+                  <div className="flex items-center gap-2 shrink-0 overflow-x-auto custom-scrollbar pb-1">
+                    <div className="flex bg-brand-surface/50 rounded p-0.5 border border-brand-border shrink-0">
+                      <button 
+                        onClick={() => setResultViewTab('main')}
+                        className={`px-3 py-1 rounded text-xs font-bold whitespace-nowrap transition-all ${
+                          resultViewTab === 'main' 
+                            ? "bg-brand-primary text-black" 
+                            : "text-muted hover:text-dim"
+                        }`}
+                      >
+                        {t.scriptPreview}
+                      </button>
+                      <button 
+                        onClick={() => setResultViewTab('translation')}
+                        className={`px-3 py-1 rounded text-xs font-bold whitespace-nowrap transition-all ${
+                          resultViewTab === 'translation' 
+                            ? "bg-brand-primary text-black" 
+                            : "text-muted hover:text-dim"
+                        }`}
+                      >
+                        {t.translationRef}
+                      </button>
+                    </div>
+
+                    {/* A/B Variant Switcher */}
+                    {featureFlags.abVariants && (result?.variantA || result?.variantB) && (
+                      <div className="flex bg-brand-surface/50 rounded p-0.5 border border-brand-border shrink-0">
+                        <button 
+                          onClick={() => setSelectedVariant('main')}
+                          className={`px-3 py-1 rounded text-xs font-bold whitespace-nowrap transition-all ${
+                            selectedVariant === 'main' 
+                              ? "bg-brand-primary text-black" 
+                              : "text-muted hover:text-dim"
+                          }`}
+                        >
+                          {uiLang === 'zh' ? '正式版' : 'Official'}
+                        </button>
+                        {result?.variantA && (
+                          <button 
+                            onClick={() => setSelectedVariant('A')}
+                            className={`px-3 py-1 rounded text-xs font-bold whitespace-nowrap transition-all ${
+                              selectedVariant === 'A' 
+                                ? "bg-brand-primary text-black" 
+                                : "text-muted hover:text-dim"
+                            }`}
+                          >
+                            {t.variantA}
+                          </button>
+                        )}
+                        {result?.variantB && (
+                          <button 
+                            onClick={() => setSelectedVariant('B')}
+                            className={`px-3 py-1 rounded text-xs font-bold whitespace-nowrap transition-all ${
+                              selectedVariant === 'B' 
+                                ? "bg-brand-primary text-black" 
+                                : "text-muted hover:text-dim"
+                            }`}
+                          >
+                            {t.variantB}
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
               {result && (
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 shrink-0 overflow-x-auto pb-1 ml-auto">
                   <button 
                     onClick={() => {
-                      const content = resultViewTab === 'main' 
-                        ? (result.parameters.language === selectedLanguage ? result.mainPrompt : result.translation)
-                        : (result.parameters.language === selectedLanguage ? result.translation : result.mainPrompt);
+                      let content = "";
+                      if (selectedVariant === 'A') content = result?.variantA || "";
+                      else if (selectedVariant === 'B') content = result?.variantB || "";
+                      else {
+                        content = resultViewTab === 'main' 
+                          ? (result.parameters.language === selectedLanguage ? result.mainPrompt : result.translation)
+                          : (result.parameters.language === selectedLanguage ? result.translation : result.mainPrompt);
+                      }
                       copyToClipboard(content);
                     }}
-                    className="flex items-center gap-1 text-sm font-bold text-muted hover:text-brand-text transition-colors"
+                    className="flex items-center gap-1 text-sm font-bold whitespace-nowrap shrink-0 text-muted hover:text-brand-text transition-colors"
                   >
                     {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                     {copied ? t.copied : t.copyPrompt}
                   </button>
                   <button 
                     onClick={handleDownload}
-                    className={`flex items-center gap-1 text-sm font-bold transition-colors ${downloadStatus === 'success' ? 'text-green-500' : 'text-muted hover:text-brand-text'}`}
+                    className={`flex items-center gap-1 text-sm font-bold whitespace-nowrap shrink-0 transition-colors ${downloadStatus === 'success' ? 'text-green-500' : 'text-muted hover:text-brand-text'}`}
                   >
                     {downloadStatus === 'success' ? <CheckCircle2 className="w-3 h-3" /> : <Download className="w-3 h-3" />}
                     {downloadStatus === 'success' ? t.copied : t.downloadTxt}
                   </button>
                   <button 
                     onClick={handleDownloadJson}
-                    className={`flex items-center gap-1 text-sm font-bold transition-colors ${downloadStatus === 'json_success' ? 'text-green-500' : 'text-muted hover:text-brand-text'}`}
+                    className={`flex items-center gap-1 text-sm font-bold whitespace-nowrap shrink-0 transition-colors ${downloadStatus === 'json_success' ? 'text-green-500' : 'text-muted hover:text-brand-text'}`}
                   >
                     {downloadStatus === 'json_success' ? <CheckCircle2 className="w-3 h-3" /> : <Layers className="w-3 h-3" />}
                     {downloadStatus === 'json_success' ? t.copied : t.downloadJson}
@@ -3889,17 +4098,147 @@ export default function App() {
                   >
                     {/* Content Area */}
                     <div className="space-y-4">
-                      <div className="bg-[var(--input-bg)] p-6 rounded border border-brand-border font-mono text-base leading-relaxed whitespace-pre-wrap selection:bg-brand-primary selection:text-black min-h-[300px]">
-                        {resultViewTab === 'main' ? (
-                          result?.parameters.language === selectedLanguage 
-                            ? result?.mainPrompt 
-                            : result?.translation
-                        ) : (
-                          result?.parameters.language === selectedLanguage 
-                            ? result?.translation 
-                            : result?.mainPrompt
+                      <div className="relative group/content">
+                        {resultViewTab === 'main' && (
+                          <div className="absolute top-4 left-4 z-10 flex items-center">
+                            <button
+                              onClick={() => setIsHighlightMode(!isHighlightMode)}
+                              className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                                isHighlightMode 
+                                  ? "bg-brand-primary/10 border-brand-primary text-brand-primary" 
+                                  : "bg-surface border-brand-border text-muted hover:text-brand-text hover:border-brand-primary/50"
+                              }`}
+                              title={t.enableHighlightTagsTip}
+                            >
+                              <Highlighter className="w-3 h-3" />
+                              {t.enableHighlightTags}
+                            </button>
+                          </div>
                         )}
+                        <div className={`bg-[var(--input-bg)] p-6 ${resultViewTab === 'main' ? 'pt-14' : ''} rounded border border-brand-border font-mono text-base leading-relaxed whitespace-pre-wrap selection:bg-brand-primary selection:text-black min-h-[300px]`}>
+                          {(() => {
+                            let content = "";
+                            if (selectedVariant === 'A') content = result?.variantA || "";
+                            else if (selectedVariant === 'B') content = result?.variantB || "";
+                            else {
+                              content = resultViewTab === 'main' 
+                                ? (result?.parameters.language === selectedLanguage ? result?.mainPrompt : result?.translation)
+                                : (result?.parameters.language === selectedLanguage ? result?.translation : result?.mainPrompt);
+                            }
+
+                            if (isHighlightMode && resultViewTab === 'main') {
+                              // Split by commas for simple highlighting if it's prompt style
+                              const parts = content.split(/([,，\n])/);
+                              return parts.map((part, idx) => {
+                                const isTag = part.trim().length > 0 && !['\n', ',', '，'].includes(part.trim()) && part.trim().length < 40;
+                                if (isTag && !part.includes('[Shot')) {
+                                  return (
+                                    <span 
+                                      key={idx}
+                                      onClick={() => setIsEditingTag({ index: idx, text: part.trim() })}
+                                      className="inline-block px-1 rounded cursor-pointer bg-brand-primary/10 text-brand-primary border border-transparent hover:border-brand-primary hover:bg-brand-primary/20 transition-all font-bold"
+                                      title={t.highlightTip}
+                                    >
+                                      {part}
+                                    </span>
+                                  );
+                                }
+                                return part;
+                              });
+                            }
+                            return content;
+                          })()}
+                        </div>
+                        
+                        {/* Tag Edit Overlay */}
+                        <AnimatePresence>
+                          {isEditingTag && (
+                            <motion.div 
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.9 }}
+                              className="absolute inset-0 bg-brand-surface/90 backdrop-blur-sm z-30 flex items-center justify-center p-8 rounded"
+                            >
+                              <div className="w-full max-w-sm space-y-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Highlighter className="w-4 h-4 text-brand-primary" />
+                                  <span className="label-micro">{uiLang === 'zh' ? '修改关键词' : 'Edit Keyword'}</span>
+                                </div>
+                                <input 
+                                  value={isEditingTag.text}
+                                  onChange={(e) => setIsEditingTag({ ...isEditingTag, text: e.target.value })}
+                                  className="w-full bg-brand-bg border-2 border-brand-primary rounded-xl px-4 py-3 text-lg font-bold outline-none"
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      // Implementation for applying changes to mainPrompt
+                                      const content = resultViewTab === 'main' 
+                                        ? (result?.parameters.language === selectedLanguage ? result?.mainPrompt : result?.translation)
+                                        : (result?.parameters.language === selectedLanguage ? result?.translation : result?.mainPrompt);
+                                      const parts = content.split(/([,，\n])/);
+                                      parts[isEditingTag.index] = isEditingTag.text;
+                                      const newContent = parts.join('');
+                                      
+                                      if (result) {
+                                        setResult({
+                                          ...result,
+                                          [resultViewTab === 'main' && result.parameters.language === selectedLanguage ? 'mainPrompt' : 'translation']: newContent
+                                        });
+                                      }
+                                      setIsEditingTag(null);
+                                    }
+                                    if (e.key === 'Escape') setIsEditingTag(null);
+                                  }}
+                                />
+                                <div className="flex gap-2">
+                                  <button 
+                                    onClick={() => {
+                                      const content = resultViewTab === 'main' 
+                                        ? (result?.parameters.language === selectedLanguage ? result?.mainPrompt : result?.translation)
+                                        : (result?.parameters.language === selectedLanguage ? result?.translation : result?.mainPrompt);
+                                      const parts = content.split(/([,，\n])/);
+                                      parts[isEditingTag.index] = isEditingTag.text;
+                                      const newContent = parts.join('');
+                                      if (result) {
+                                        setResult({
+                                          ...result,
+                                          [resultViewTab === 'main' && result.parameters.language === selectedLanguage ? 'mainPrompt' : 'translation']: newContent
+                                        });
+                                      }
+                                      setIsEditingTag(null);
+                                    }}
+                                    className="flex-1 py-2 bg-brand-primary text-black rounded-lg font-bold"
+                                  >
+                                    {t.save}
+                                  </button>
+                                  <button onClick={() => setIsEditingTag(null)} className="flex-1 py-2 bg-brand-border rounded-lg font-bold">{t.cancel}</button>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
+
+                      {/* Audio SFX Prompt */}
+                      {featureFlags.audioSFX && result?.audioPrompt && (
+                        <div className="space-y-3 pt-4 border-t border-brand-border/50 animate-in fade-in slide-in-from-top-4">
+                          <div className="flex items-center gap-2">
+                            <Wind className="w-4 h-4 text-brand-primary" />
+                            <label className="label-micro">{t.audioPrompt}</label>
+                          </div>
+                          <div className="bg-brand-primary/5 p-4 rounded-xl border border-brand-primary/20 relative group">
+                            <p className="text-sm font-medium text-main leading-relaxed pr-8 italic">
+                              "{result.audioPrompt}"
+                            </p>
+                            <button 
+                              onClick={() => copyToClipboard(result.audioPrompt!)}
+                              className="absolute right-3 top-4 p-1.5 rounded-lg bg-brand-surface text-muted hover:text-brand-primary opacity-0 group-hover:opacity-100 transition-all border border-brand-border"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Parameters Grid */}
