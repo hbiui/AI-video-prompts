@@ -128,14 +128,18 @@
 
 /* Splash Screen Glow Animations */
 .glow-breathe-text {
-  animation: text-glow-breathe 4s ease-in-out infinite;
+  animation: text-glow-breathe 3s ease-in-out infinite;
 }
 
 @keyframes text-glow-breathe {
   0%, 100% {
-    text-shadow: 0 0 10px rgba(255, 255, 255, 0.2), 0 0 20px var(--brand-primary), 0 0 30px var(--brand-primary);
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.1), 0 0 8px var(--brand-primary);
+    opacity: 0.8;
+    transform: scale(0.995);
   }
   50% {
-    text-shadow: 0 0 15px rgba(255, 255, 255, 0.5), 0 0 30px var(--brand-primary), 0 0 50px var(--brand-primary), 0 0 70px var(--brand-primary);
+    text-shadow: 0 0 6px rgba(255, 255, 255, 0.4), 0 0 16px var(--brand-primary), 0 0 24px var(--brand-primary);
+    opacity: 1;
+    transform: scale(1);
   }
 }
